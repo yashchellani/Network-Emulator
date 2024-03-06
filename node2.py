@@ -4,7 +4,7 @@ import time
 node_2_ip = "\x2a"
 node_2_mac = "N2"
 
-router = ("localhost", 8200)
+router = ("localhost", 8123)
 
 node_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 time.sleep(1)

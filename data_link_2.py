@@ -19,13 +19,18 @@ class ListenConnections(threading.Thread):
         print("Waiting for devices to connect to the LAN...")
 
         while True:
+            # Accept connection
             new_client_and_address = data_link.accept()
+
+            # Add connected device into set
             with connected_devices_lock:
                 connected_devices.add(new_client_and_address)
             print("New client connected!")
+
+            # Spawn a thread to listen to the device
             ReceiveMessage(client_and_address=new_client_and_address).start()
 
-# Thread to receive messages from the devices in the LAN
+# Thread to listen to the current devices in the LAN
 class ReceiveMessage(threading.Thread):
     def __init__(self, client_and_address):
         threading.Thread.__init__(self)
@@ -37,24 +42,38 @@ class ReceiveMessage(threading.Thread):
         print("Waiting to receive message...")
         try:
             while(True):
+                # Wait to receive message from designated client
                 received_message = self.client.recv(1024)
+
+                # If client disconnects, break out of the loop
                 if not received_message:
                     break
+
+                # Decode the bytes
                 received_message = received_message.decode("utf-8")
+
                 print(received_message)
 
-                # forward message to all the connected devices
+                # Forward message to all the connected devices
                 with connected_devices_lock:
                     for device in connected_devices:
-                        data_link.sendto(bytes(received_message, "utf-8"), device) 
+                        # Don't send back to the same device that sent the message
+                        if self.client_and_address == device:
+                            continue
+                        device[0].sendto(bytes(received_message, "utf-8"), device[1])
+
         except Exception as e:
             print("Exception has occurred: ", e)
         finally:
+            # Disconnect client
             with connected_devices_lock:
                 connected_devices.remove(self.client_and_address)
                 print("Client disconnected from LAN")
+                print(connected_devices)
                 self.client.close()
 
+
 if __name__ == "__main__":
+    # Listen for connections
     listen_thread = ListenConnections()
     listen_thread.start()

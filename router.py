@@ -52,32 +52,39 @@ def arp_broadcast(sourceIP, destIP, sourceMAC):
 def encapsulate():
     pass
 
-###############################
-# R1
-###############################
-
-# Connect to LAN 1
-data_link_1 = ("localhost", 8122)
-router_1.connect(data_link_1)
-
 
 ###############################
-# R2
+# THREADS
 ###############################
+class ReceiveMessageLAN(threading.Thread):
+    def __init__(self, interface_socket, MAC_addr):
+        threading.Thread.__init__(self)
+        self.interface_socket = interface_socket
+        self.MAC_addr = MAC_addr
 
-# Connect to LAN 2
-data_link_2 = ("localhost", 8123)
-router_2.connect(data_link_2)
+    def run(self):
+        while True:
+            received_message = self.interface_socket.recv(1024)
+            if not received_message:
+                break
+            received_message = received_message.decode('utf-8')
+            print(f"Received from interface {self.MAC_addr}: {received_message}")
+
 
 ###############################
 # MAIN FUNCTION
 ###############################
                     
 if __name__ == "__main__":
-    print("Waiting for message...")
-    while True:
-        received_message_1 = router_1.recv(1024)
-        print(received_message_1)
+    # Connect to LAN 1
+    data_link_1 = ("localhost", 8122)
+    router_1.connect(data_link_1)
+    ReceiveMessageLAN(router_1, "R1").start()
 
-        received_message_2 = router_2.recv(1024)
-        print(received_message_2)
+    # Connect to LAN 2
+    data_link_2 = ("localhost", 8123)
+    router_2.connect(data_link_2)
+    ReceiveMessageLAN(router_2, "R2").start()
+
+
+    
