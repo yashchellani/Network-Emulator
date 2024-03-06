@@ -7,14 +7,14 @@
 5. Have node1 or node2 communicate
 
 # TO-DO
-- [] Make code less spaghetti
-- [] Allow nodes to accept messages from their LAN as well
+- Make code less spaghetti
+- Allow nodes to accept messages from their LAN as well
 - Implement protocols and functionalities: 
-    - [] ARP
-    - [] Kill
-    - [] Ping
-    - [] Option to drop packets not meant for it
-    - [] Router encapsulation
-    - [] Firewall
-    - [] IP Spoofing from Node 2
-- [] Implement bonus functionalities
+    - ARP
+    - Kill
+    - Ping
+    - Option to drop packets not meant for it
+    - Router encapsulation
+    - Firewall
+    - IP Spoofing from Node 2
+- Implement bonus functionalities
