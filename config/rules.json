@@ -1,0 +1,38 @@
+{
+  "rules": [
+    {
+      "id": 1,
+      "action": "block",
+      "description": "Block all traffic from 192.168.1.100",
+      "conditions": {
+        "src_ip": "192.168.1.100"
+      }
+    },
+    {
+      "id": 2,
+      "action": "block",
+      "description": "Block HTTP traffic to port 80",
+      "conditions": {
+        "dest_port": 80,
+        "protocol": "TCP"
+      }
+    },
+    {
+      "id": 3,
+      "action": "allow",
+      "description": "Allow all traffic to 192.168.1.200",
+      "conditions": {
+        "dest_ip": "192.168.1.200"
+      }
+    },
+    {
+      "id": 4,
+      "action": "block",
+      "description": "Block all SSH traffic",
+      "conditions": {
+        "dest_port": 22,
+        "protocol": "TCP"
+      }
+    }
+  ]
+}
