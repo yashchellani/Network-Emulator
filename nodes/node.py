@@ -1,15 +1,23 @@
 import socket
-
 class Node:
-    def __init__(self, ip_address, mac_address):
+    def __init__(self, ip_address, mac_address, data_link_address=("localhost", 8122)):
         self.ip_address = ip_address
         self.mac_address = mac_address
+        self.data_link_address = data_link_address
+        self.data_link_socket = None
+
+    def connect_to_data_link(self):
+        """Establishes a connection to the data link server."""
+        self.data_link_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.data_link_socket.connect(self.data_link_address)
+        print(f"{self.mac_address} connected to data link")
 
     def send_data(self, data, dest_mac, dest_ip):
         """
         Emulates sending data over Ethernet to a specific destination.
         """
         ethernet_frame = self._construct_ethernet_frame(dest_mac, data)
+        self.data_link_socket.send(ethernet_frame)
         print(f"Sent data to {dest_mac}: {ethernet_frame}")
 
     def receive_data(self):
