@@ -8,7 +8,8 @@ class BasicNode(Node):
         super().__init__(ip_address, mac_address)
 
     def receive_packet(self, packet):
-        pass
+        print(f"Received packet: {packet}")
+    
 
 class MaliciousNode(Node):
     """

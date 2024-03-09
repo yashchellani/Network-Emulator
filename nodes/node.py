@@ -1,36 +1,58 @@
 import socket
+import threading
+
 class Node:
-    def __init__(self, ip_address, mac_address, data_link_address=("localhost", 8122)):
+    def __init__(self, ip_address, mac_address):
         self.ip_address = ip_address
         self.mac_address = mac_address
-        self.data_link_address = data_link_address
+        self.data_link_address = ('localhost', 8122) if mac_address == 'N1' else ('localhost', 8123)
         self.data_link_socket = None
+        self.running = True
+
 
     def connect_to_data_link(self):
         """Establishes a connection to the data link server."""
         self.data_link_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.data_link_socket.connect(self.data_link_address)
-        print(f"{self.mac_address} connected to data link")
+        print(f"\n{self.mac_address} connected to data link")
 
     def send_data(self, data, dest_mac, dest_ip):
         """
         Emulates sending data over Ethernet to a specific destination.
         """
         ethernet_frame = self._construct_ethernet_frame(dest_mac, data)
-        self.data_link_socket.send(ethernet_frame)
-        print(f"Sent data to {dest_mac}: {ethernet_frame}")
+        try:
+            self.data_link_socket.send(ethernet_frame)
+            print(f"\nSent data to {dest_mac}: {ethernet_frame}")
+        except ConnectionAbortedError as e:
+            print(f"Failed to send data, connection was aborted: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
+    def start_receiving(self):
+        """Start a new thread to listen for incoming messages."""
+        receiving_thread = threading.Thread(target=self.receive_data)
+        receiving_thread.start()
 
     def receive_data(self):
-        """
-        Emulates receiving data over Ethernet.
-        """
-        data, addr = self.socket.recvfrom(1024)  # Buffer size of 1024 bytes
-        src_mac, dest_mac, data_length, data = self._parse_ethernet_frame(data)
-        if dest_mac == self.mac_address:
-            print(f"Received data: {data} from {src_mac}")
-            self._process_received_data(data, src_mac)
-        else:
-            print(f"Data not for me. Dropping data from {src_mac}")
+        """Continuously listen for incoming data and print it."""
+        try:
+            while self.running:
+                data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
+                src_mac, dest_mac, data_length, data = self._parse_ethernet_frame(data)
+                print(f"Received data: {data} for {dest_mac} and i am {self.mac_address}")
+                if dest_mac == self.mac_address:
+                    print(f"\nYAYYYY Node {self.mac_address} - Received data: {data} from {src_mac}")
+                    self._process_received_data(data, src_mac)
+                # else:
+                    # print(f"Data not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}")
+        except Exception as e:
+            print(f"Error receiving data: {e}")
+            self.running = False
+
+    def stop_receiving(self):
+        """Stop listening for incoming data."""
+        self.running = False
 
     def _construct_ethernet_frame(self, dest_mac, data):
         """

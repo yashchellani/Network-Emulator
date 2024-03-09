@@ -1,5 +1,3 @@
-import socket
-
 class Router:
   def __init__(self, interface_configs):
     """
@@ -17,7 +15,7 @@ class Router:
         mac = interface['mac']
         # If using actual network connections, you might open a socket per interface here.
         # For simulation purposes, we'll just print a connection message.
-        print(f"Interface {ip}, MAC {mac} connected to data link at {DATA_LINK_ADDRESS}")
+        print(f"\nInterface {ip}, MAC {mac} connected to data link at {DATA_LINK_ADDRESS}")
 
 
 
