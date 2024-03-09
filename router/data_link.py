@@ -64,10 +64,9 @@ class ReceiveMessage(threading.Thread):
 
     def broadcast_to_group(self, message, dest_mac):
         with connected_devices_lock:
-            # Assuming self.client is the socket object for the sender
             receiver_port = node_definitions[dest_mac]
             if receiver_port in connected_devices:
-                for target_socket in connected_devices[receiver_port]:  # Iterate over addresses in the sender's group
+                for target_socket in connected_devices[receiver_port]: # Broadcast to all devices in the subnet
                     print(f"\nBroadcasting to {target_socket.getpeername()}: {message}")
                     try:
                         target_socket.sendall(message.encode("utf-8"))

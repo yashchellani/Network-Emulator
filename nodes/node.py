@@ -40,12 +40,12 @@ class Node:
             while self.running:
                 data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
                 src_mac, dest_mac, data_length, data = self._parse_ethernet_frame(data)
-                print(f"Received data: {data} for {dest_mac} and i am {self.mac_address}")
+                print(f"\nReceived data: {data} for {dest_mac} and i am {self.mac_address}")
                 if dest_mac == self.mac_address:
                     print(f"\nYAYYYY Node {self.mac_address} - Received data: {data} from {src_mac}")
                     self._process_received_data(data, src_mac)
-                # else:
-                    # print(f"Data not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}")
+                else:
+                    print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}. I can still sniff tho ehhe")
         except Exception as e:
             print(f"Error receiving data: {e}")
             self.running = False
