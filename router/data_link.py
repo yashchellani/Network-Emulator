@@ -17,23 +17,39 @@ class ListenConnections(threading.Thread):
     def __init__(self, sockets):
         super().__init__()
         self.sockets = sockets  # A list of sockets to listen to
+        self.listeners = []
+        self.running = True
 
     def run(self):
         print("Waiting for devices to connect to the LAN...")
 
-        while True:
+        while self.running:
             # The select function will block until there is at least one socket ready for processing
             readable, _, _ = select.select(self.sockets, [], [])
             for ready_socket in readable:
-                client, address = ready_socket.accept()
-                with connected_devices_lock:
-                    local_address = client.getsockname()  # This returns a tuple (host, port)
-                    local_port = local_address[1]
-                    if local_port not in connected_devices:
-                        connected_devices[local_port] = [client]
-                    else:
-                        connected_devices[local_port].append(client)
-                ReceiveMessage(client_and_address=(client, address)).start()
+                try:
+                    client, address = ready_socket.accept()
+                    with connected_devices_lock:
+                        local_address = client.getsockname()  # This returns a tuple (host, port)
+                        local_port = local_address[1]
+                        if local_port not in connected_devices:
+                            connected_devices[local_port] = [client]
+                        else:
+                            connected_devices[local_port].append(client)
+                        
+                    receiver_thread = ReceiveMessage(client_and_address=(client, address))
+                    receiver_thread.start()
+                    self.listeners.append(receiver_thread)
+                except Exception as e:
+                    break
+    
+    def stop(self):
+        self.running = False
+        for listener in self.listeners:
+            if listener.is_alive():
+                listener.join()
+        for socket in self.sockets:
+            socket.close()
 
 class ReceiveMessage(threading.Thread):
     def __init__(self, client_and_address):

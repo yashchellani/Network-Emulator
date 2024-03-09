@@ -1,6 +1,6 @@
 import socket
 import threading
-
+from time import sleep
 class Node:
     def __init__(self, ip_address, mac_address):
         self.ip_address = ip_address
@@ -8,6 +8,7 @@ class Node:
         self.data_link_address = ('localhost', 8122) if mac_address == 'N1' else ('localhost', 8123)
         self.data_link_socket = None
         self.running = True
+        self.receiving_thread = None
 
 
     def connect_to_data_link(self):
@@ -31,28 +32,44 @@ class Node:
 
     def start_receiving(self):
         """Start a new thread to listen for incoming messages."""
-        receiving_thread = threading.Thread(target=self.receive_data)
-        receiving_thread.start()
+        self.data_link_socket.settimeout(5.0)  # Set the timeout for blocking socket operations
+        self.receiving_thread = threading.Thread(target=self.receive_data)
+        self.receiving_thread.start()
 
     def receive_data(self):
         """Continuously listen for incoming data and print it."""
+        self.data_link_socket.settimeout(5.0)  # Setting the timeout here as an example
         try:
             while self.running:
-                data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
-                src_mac, dest_mac, data_length, data = self._parse_ethernet_frame(data)
-                print(f"\nReceived data: {data} for {dest_mac} and i am {self.mac_address}")
-                if dest_mac == self.mac_address:
-                    print(f"\nYAYYYY Node {self.mac_address} - Received data: {data} from {src_mac}")
-                    self._process_received_data(data, src_mac)
-                else:
-                    print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}. I can still sniff tho ehhe")
+                try:
+                    data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
+                    src_mac, dest_mac, data_length, data = self._parse_ethernet_frame(data)
+                    print(f"\nReceived data: {data} for {dest_mac} and I am {self.mac_address}")
+                    
+                    if dest_mac == self.mac_address:
+                        print(f"\nYAYYYY Node {self.mac_address} - Received data: {data} from {src_mac}")
+                        self._process_received_data(data, src_mac)
+                    else:
+                        print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}. I can still sniff tho ehhe")
+                
+                except socket.timeout:
+                    break
+
         except Exception as e:
-            print(f"Error receiving data: {e}")
             self.running = False
 
     def stop_receiving(self):
         """Stop listening for incoming data."""
         self.running = False
+        sleep(2)
+        try:
+        # Shutdown the socket connection before closing
+            self.data_link_socket.shutdown(socket.SHUT_RDWR)
+        except Exception as e:
+            print(f"Error shutting down the socket: {e}")
+        finally:
+            self.data_link_socket.close()
+        self.receiving_thread.join()
 
     def _construct_ethernet_frame(self, dest_mac, data):
         """

@@ -58,14 +58,31 @@ def setup_network():
   print("Simulating network traffic...")
   simulate_network_traffic(ids, node1, node2, node3, node4, router)
 
+  while True:
+    sleep(1)
+    command = input("What would you like to do? (exit, sniff, ping, kill): ")
+    if command == "exit":
+      cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server)
+    print("Command: ", command)
+
 def simulate_network_traffic(ids, node1, node2, node3, node4, router):
   node1.send_data(data='Hello Node2', dest_mac=node2.mac_address, dest_ip=node2.ip_address)
   node2.send_data(data='Hello Node2', dest_mac=node1.mac_address, dest_ip=node1.ip_address)
   node3.send_data(data='Hello Node4', dest_mac=node4.mac_address, dest_ip=node4.ip_address)
   node2.spoof_packet(target_ip=node1.ip_address, payload='Spoofed Hello')
   node2.spoof_packet(target_ip=node1.ip_address, payload='malicious Hello')
-  while True:
-    sleep(1)
+  
+
+def cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server):
+  print("Cleaning up...")
+  node1.stop_receiving()
+  node2.stop_receiving()
+  node3.stop_receiving()
+  node4.stop_receiving()
+  data_link_server.stop()
+  data_link_server.join()
+  print("Goodbye!")
+  exit()
 
 
 if __name__ == '__main__':
