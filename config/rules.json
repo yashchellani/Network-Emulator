@@ -19,14 +19,6 @@
     },
     {
       "id": 3,
-      "action": "allow",
-      "description": "Allow all traffic to 192.168.1.200",
-      "conditions": {
-        "dest_ip": "192.168.1.200"
-      }
-    },
-    {
-      "id": 4,
       "action": "block",
       "description": "Block all SSH traffic",
       "conditions": {

@@ -24,19 +24,9 @@ class MaliciousNode(Node):
     def sniff_traffic(self, packet):
         pass
 
-class FirewallNode(BasicNode):
-  def __init__(self, ip_address, mac_address, firewall):
-    super().__init__(ip_address, mac_address)
-    self.firewall = firewall
-
-  def receive_data(self, data):
-      # Use the firewall to check the incoming data
-    packet = self._create_packet(data)
-    action = self.firewall.apply_rules(packet)
-    if action == 'allow':
-        super().receive_data(data)
-    else:
-        print(f"Packet blocked by firewall at {self.ip_address}")
+class FirewallNode(Node):
+  def __init__(self, ip_address, mac_address, firewall, ids):
+    super().__init__(ip_address, mac_address, firewall, ids)
 
   def _create_packet(self, data):
     # Create a packet dictionary from the data, this is a placeholder

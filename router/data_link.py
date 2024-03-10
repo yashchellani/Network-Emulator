@@ -64,7 +64,7 @@ class ReceiveMessage(threading.Thread):
                     break
 
                 print(f"Received from {self.address}: {received_message}")
-                print(f"Connected devices: {connected_devices}")
+                # print(f"Connected devices: {connected_devices}")
 
                 received_message = received_message.decode("utf-8")
                 src_mac, dest_mac, data_length, data = received_message.split(' ', 3)

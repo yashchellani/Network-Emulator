@@ -2,14 +2,16 @@ import socket
 import threading
 from time import sleep
 class Node:
-    def __init__(self, ip_address, mac_address):
+    def __init__(self, ip_address, mac_address, firewall=None, ids=None):
         self.ip_address = ip_address
         self.mac_address = mac_address
         self.data_link_address = ('localhost', 8122) if mac_address == 'N1' else ('localhost', 8123)
         self.data_link_socket = None
         self.running = True
         self.receiving_thread = None
-
+        self.firewall = firewall
+        self.ids = ids
+        self.ids_lock = threading.Lock()
 
     def connect_to_data_link(self):
         """Establishes a connection to the data link server."""
@@ -43,9 +45,20 @@ class Node:
             while self.running:
                 try:
                     data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
+                    
+                    if self.ids:
+                        print(f"\nAnalyzing packet: {data}")
+                        with self.ids_lock:  # Acquire the lock
+                            self.ids.analyze_packet(data)
+
                     src_mac, dest_mac, data_length, data = self._parse_ethernet_frame(data)
                     print(f"\nReceived data: {data} for {dest_mac} and I am {self.mac_address}")
-                    
+
+                    if self.firewall and self.firewall.is_mac_blocked(src_mac):
+                        print(f"IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
+                        continue
+
+
                     if dest_mac == self.mac_address:
                         print(f"\nYAYYYY Node {self.mac_address} - Received data: {data} from {src_mac}")
                         self._process_received_data(data, src_mac)
@@ -61,7 +74,7 @@ class Node:
     def stop_receiving(self):
         """Stop listening for incoming data."""
         self.running = False
-        sleep(2)
+        sleep(1)
         try:
         # Shutdown the socket connection before closing
             self.data_link_socket.shutdown(socket.SHUT_RDWR)

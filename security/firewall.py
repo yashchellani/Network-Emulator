@@ -15,7 +15,7 @@ class Firewall:
             return rule['action'] 
     return 'allow' 
 
-  def _matches_rule(self, packet, rule):
+  def matches_rule(self, packet, rule):
     """
     Checks if a packet matches a specific rule.
     """
@@ -28,7 +28,9 @@ class Firewall:
     """
     Adds a new rule to the firewall.
     """
-    self.rules.append({'action': action, 'conditions': conditions})
+    new_rule = {"id": len(self.rules) + 1, "action": action, "conditions": conditions}
+    self.rules.append(new_rule)
+    print(f"\nAdded rule: {self.rules[-1]}")
 
   def remove_rule(self, index):
     """
@@ -36,3 +38,14 @@ class Firewall:
     """
     if index < len(self.rules):
         del self.rules[index]
+  
+  def is_mac_blocked(self, mac):
+    """
+    Checks if there is a block rule for a specific IP address.
+    """
+    print(f"Checking if MAC {mac} is blocked...")
+    for rule in self.rules:
+      conditions = rule.get('conditions', {})
+      if rule.get('action') == 'block' and ('mac' in conditions and conditions['mac'] == mac):
+        return True
+    return False
