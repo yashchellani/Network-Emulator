@@ -46,6 +46,10 @@ def setup_network():
   node3.connect_to_data_link()
   node4.connect_to_data_link()
 
+  # replace the above function calls with map
+  # map(lambda node: node.connect_to_data_link(), [node1, node2, node3, node4])
+  # map(lambda node: node.start_receiving(), [node1, node2, node3, node4])
+
   node1.start_receiving()
   node2.start_receiving()
   node3.start_receiving()
