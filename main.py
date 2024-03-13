@@ -40,9 +40,10 @@ def setup_network():
     {'ip': '0x21', 'mac': 'R2', 'network': '192.168.2.0/24'}
   ])
 
-  # Connect nodes and router to the data link
-  map(lambda node: node.connect_to_data_link(), [node1, node2, node3, node4])
-  map(lambda node: node.start_receiving(), [node1, node2, node3, node4])
+  nodes = [node1, node2, node3, node4]
+  for node in nodes:
+      node.connect_to_data_link()
+      node.start_receiving()
 
   # Assuming Router class also has a connect_to_data_link method
   router.connect_to_data_link()
