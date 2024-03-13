@@ -41,19 +41,8 @@ def setup_network():
   ])
 
   # Connect nodes and router to the data link
-  node1.connect_to_data_link()
-  node2.connect_to_data_link()
-  node3.connect_to_data_link()
-  node4.connect_to_data_link()
-
-  # replace the above function calls with map
-  # map(lambda node: node.connect_to_data_link(), [node1, node2, node3, node4])
-  # map(lambda node: node.start_receiving(), [node1, node2, node3, node4])
-
-  node1.start_receiving()
-  node2.start_receiving()
-  node3.start_receiving()
-  node4.start_receiving()
+  map(lambda node: node.connect_to_data_link(), [node1, node2, node3, node4])
+  map(lambda node: node.start_receiving(), [node1, node2, node3, node4])
 
   # Assuming Router class also has a connect_to_data_link method
   router.connect_to_data_link()
