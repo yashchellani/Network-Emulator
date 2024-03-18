@@ -52,6 +52,11 @@ def setup_network():
   node3.start_receiving()
   node4.start_receiving()
   
+  nodes = [node1, node2, node3, node4]
+  for node in nodes:
+      node.connect_to_data_link()
+      node.start_receiving()
+
   # Assuming Router class also has a connect_to_data_link method
   router.connect_to_data_link()
 
