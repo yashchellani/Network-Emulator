@@ -1,6 +1,7 @@
 import socket
 import threading
-from time import sleep
+from time import sleep,time
+
 class Node:
     def __init__(self, ip_address, mac_address, firewall=None, ids=None):
         self.ip_address = ip_address
@@ -12,6 +13,7 @@ class Node:
         self.firewall = firewall
         self.ids = ids
         self.ids_lock = threading.Lock()
+        
 
     def connect_to_data_link(self):
         """Establishes a connection to the data link server."""
@@ -117,4 +119,54 @@ class Node:
         Disconnects from another node by removing its MAC address.
         """
         if node_mac in self.connected_nodes:
-            del self.connected_nodes[node_mac]
+            del self.connected_nodes[node_mac]    
+                
+     
+    def ping(self, dest_mac, data_size, count):
+        """
+        Emulates pinging Ethernet to a specific destination.
+        """
+        for _ in range(count):
+            try:
+                # Create a payload with the specified size
+                payload = b'0' * data_size
+                ethernet_frame = self._construct_ethernet_frame(dest_mac, payload)
+                self.data_link_socket.send(ethernet_frame)
+                print(f"Pinging {dest_mac} with data size {data_size} bytes")
+                
+                # Wait for a response
+                response_received = False
+                timeout = 5  # Adjust timeout as needed
+                start_time = time()
+                while not response_received and time() - start_time < timeout:
+                    try:
+                        data, _ = self.data_link_socket.recvfrom(1024)  # Adjust buffer size as needed
+                        src_mac, _, _, _ = self._parse_ethernet_frame(data)
+                        if src_mac == dest_mac:  # Assuming the response comes from the destination
+                            print(f"Response received from {dest_mac}: {data}")
+                            response_received = True
+                    except socket.timeout:
+                        pass
+                    
+                if not response_received:
+                    print(f"No response received from {dest_mac} within {timeout} seconds.")
+                
+                # Sleep between pings (if necessary)
+                sleep(1)
+            except ConnectionAbortedError as e:
+                print(f"Failed to send data, connection was aborted: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
+
+    def respond_to_ping(self):
+        """
+        Method to respond to ping requests.
+        """
+        # Here you can construct a response and send it back to the source MAC address
+        response_data = "Response to ping request"
+        self.send_data(response_data, self.mac_address, self.ip_address)
+
+        
+ 
+
+   

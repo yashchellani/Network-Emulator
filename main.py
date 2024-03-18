@@ -7,6 +7,7 @@ import socket
 import json
 from time import sleep
 
+
 def load_firewall_rules(filepath="config/rules.json"):
   with open(filepath, 'r') as file:
     data = json.load(file)
@@ -50,7 +51,7 @@ def setup_network():
   node2.start_receiving()
   node3.start_receiving()
   node4.start_receiving()
-
+  
   # Assuming Router class also has a connect_to_data_link method
   router.connect_to_data_link()
 
@@ -61,7 +62,13 @@ def setup_network():
   while True:
     sleep(1)
     command = input("What would you like to do? (exit, sniff, ping, kill): ")
-    if command == "exit":
+    if command == "ping":
+      num_of_pings = int(input("Input number of times to ping: "))
+      data_size = int(input("Input data size to ping: "))
+      node1.ping(dest_mac=node2.mac_address, data_size=data_size, count=num_of_pings)
+      print("pinging")
+      
+    elif command == "exit":
       cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server)
     print("Command: ", command)
 
@@ -69,8 +76,7 @@ def simulate_network_traffic(ids, node1, node2, node3, node4, router):
   node1.send_data(data='Hello Node2', dest_mac=node2.mac_address, dest_ip=node2.ip_address)
   node2.send_data(data='Hello Node2', dest_mac=node1.mac_address, dest_ip=node1.ip_address)
   node2.send_data(data='MALICIOUS PAYLOAD', dest_mac=node3.mac_address, dest_ip=node3.ip_address)
-  node3.send_data(data='Hello Node4', dest_mac=node4.mac_address, dest_ip=node4.ip_address)
-  
+  node3.send_data(data='Hello Node4', dest_mac=node4.mac_address, dest_ip=node4.ip_address)  
 
 def cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server):
   print("Cleaning up...")
@@ -82,7 +88,7 @@ def cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_lin
   data_link_server.join()
   print("Goodbye!")
   exit()
-
+  
 
 if __name__ == '__main__':
     setup_network()
