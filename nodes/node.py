@@ -19,7 +19,15 @@ class Node:
         self.data_link_socket.connect(self.data_link_address)
         print(f"\n{self.mac_address} connected to data link")
 
-    def send_data(self, data, dest_mac, dest_ip):
+    def send_ip_packet(self, data, dest_mac, dest_ip, protocol):
+        """
+        Emulates sending data over IP to a specific destination
+        """
+        data_length = len(data)
+        ip_packet = f"{self.ip_address} {dest_ip} {str(protocol)} {data_length} {data}"
+        self.send_ethernet_frame(ip_packet, dest_mac) # encapsulate inside ethernet frame
+
+    def send_ethernet_frame(self, data, dest_mac):
         """
         Emulates sending data over Ethernet to a specific destination.
         """
@@ -104,6 +112,19 @@ class Node:
         """
         Placeholder method for processing received data. To be overridden in subclasses.
         """
+        data = data.decode('utf-8')
+        # check if data is an encapsulated IP packet - if our self IP is in the data, then it should be an IP packet...?
+        if self.ip_address in data:
+            # if yes, extract ip header (to get the protocol and source ip)
+            src_ip, dst_ip, protocol, data_length, ip_payload = data.split(' ', 4)
+            
+            if protocol == 0: # if protocol is ping
+                # respond to ping
+                pass
+            elif protocol == 1: # if protocol is kill
+                # die
+                pass
+
         print(f"Data from {src_mac}: {data}")
 
     def connect_to_node(self, node_mac, node_ip):

@@ -11,6 +11,8 @@ node_definitions = {
     "N2": 8123,
     "N3": 8123,
     "N4": 8123,
+    "R1": 8122,
+    "R2": 8123
 }
 
 class ListenConnections(threading.Thread):
