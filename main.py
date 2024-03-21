@@ -56,7 +56,11 @@ def setup_network():
     sleep(1)
     command = input("What would you like to do? (exit, sniff, ping, kill): ")
     if command == "exit":
-      cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server)
+      cleanup(node1, node2, node3,  node4, router, data_link, data_link_2, data_link_server)
+    elif command == "sniff":
+      node2.sniffing_enabled = True
+      print("Node2 is now sniffing traffic...")
+      
     print("Command: ", command)
 
 def simulate_network_traffic(ids, node1, node2, node3, node4, router):

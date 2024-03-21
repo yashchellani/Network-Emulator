@@ -63,8 +63,14 @@ class Node:
                         print(f"\nYAYYYY Node {self.mac_address} - Received data: {data} from {src_mac}")
                         self._process_received_data(data, src_mac)
                     else:
-                        print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}. I can still sniff tho ehhe")
-                
+                        if hasattr(self, 'sniff_traffic'):
+                            print(f"Sniffing from {src_mac} to {dest_mac}")
+                            if self.sniffing_enabled:
+                                self.sniff_traffic(data)
+                        else:   
+                            print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}.")
+                        
+
                 except socket.timeout:
                     break
 
