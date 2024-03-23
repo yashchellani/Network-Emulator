@@ -13,25 +13,52 @@ class Node:
         self.ids = ids
         self.ids_lock = threading.Lock()
 
+        # TODO: Come up with a better way of calculating the default gateway (input it when initializing the node?)
+        # Cause yes we can derive it from the IP address but right now we're assuming subnet mask is always 4 bits in front
+        _mask = int('11110000', 2)
+        default_gateway = (ord(ip_address) & _mask) + 1
+        # print("Default Gateway: ", bin(default_gateway))
+        self.default_gateway = chr(default_gateway)
+
+        self.arp_table = {}
+        self.connected_nodes = {}
+
     def connect_to_data_link(self):
         """Establishes a connection to the data link server."""
         self.data_link_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.data_link_socket.connect(self.data_link_address)
         print(f"\n{self.mac_address} connected to data link")
 
-    def send_ip_packet(self, data, dest_mac, dest_ip, protocol):
+    def send_ip_packet(self, data, dest_ip, protocol):
         """
         Emulates sending data over IP to a specific destination
         """
+
+        # TODO: Current assumption - if you're sending over IP, you just directly send to default gateway.
+        # Idk if we should implement being able to send IP packets to devices in the same network
+
+        # If default gateway not in ARP table, send ARP query
+        if self.default_gateway not in self.arp_table:
+            # send ARP query to our data link
+            arp_query = f"{self.mac_address} {self.ip_address} {self.default_gateway} \xFF {0} ARP_QUERY"
+            self.send_ethernet_frame(arp_query, "FF", 1)
+            # wait until a response
+            while self.default_gateway not in self.arp_table:
+                sleep(1) # life would be better with asyncio
+
+        # Find the default gateway's MAC address
+        dest_mac = self.arp_table[self.default_gateway]
+        
         data_length = len(data)
         ip_packet = f"{self.ip_address} {dest_ip} {str(protocol)} {data_length} {data}"
-        self.send_ethernet_frame(ip_packet, dest_mac) # encapsulate inside ethernet frame
 
-    def send_ethernet_frame(self, data, dest_mac):
+        self.send_ethernet_frame(ip_packet, dest_mac, 0) # encapsulate inside ethernet frame
+
+    def send_ethernet_frame(self, data, dest_mac, ethertype):
         """
         Emulates sending data over Ethernet to a specific destination.
         """
-        ethernet_frame = self._construct_ethernet_frame(dest_mac, data)
+        ethernet_frame = self._construct_ethernet_frame(dest_mac, ethertype, data)
         try:
             self.data_link_socket.send(ethernet_frame)
             print(f"\nSent data to {dest_mac}: {ethernet_frame}")
@@ -59,17 +86,19 @@ class Node:
                         with self.ids_lock:  # Acquire the lock
                             self.ids.analyze_packet(data)
 
-                    src_mac, dest_mac, data_length, data = self._parse_ethernet_frame(data)
-                    print(f"\nReceived data: {data} for {dest_mac} and I am {self.mac_address}")
+                    src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
+                    print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
 
                     if self.firewall and self.firewall.is_mac_blocked(src_mac):
-                        print(f"IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
+                        print(f"\nIP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
                         continue
 
-
                     if dest_mac == self.mac_address:
-                        print(f"\nYAYYYY Node {self.mac_address} - Received data: {data} from {src_mac}")
-                        self._process_received_data(data, src_mac)
+                        print(f"\nYAYYYY Node {self.mac_address} - Received data: {ethernet_payload} from {src_mac}")
+                        self._process_received_data(ethernet_payload, src_mac, ethertype)
+                    elif dest_mac == "FF":
+                        print(f"\nReceived broadcast from {src_mac}")
+                        self._process_received_data(ethernet_payload, src_mac, ethertype)
                     else:
                         print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}. I can still sniff tho ehhe")
                 
@@ -92,12 +121,12 @@ class Node:
             self.data_link_socket.close()
         self.receiving_thread.join()
 
-    def _construct_ethernet_frame(self, dest_mac, data):
+    def _construct_ethernet_frame(self, dest_mac, ethertype, data):
         """
         Constructs an Ethernet frame with source and destination MAC addresses and data.
         """
         data_length = len(data)
-        ethernet_frame = f"{self.mac_address} {dest_mac} {data_length} {data}"
+        ethernet_frame = f"{self.mac_address} {dest_mac} {data_length} {ethertype} {data}"
         return ethernet_frame.encode('utf-8')
 
     def _parse_ethernet_frame(self, frame):
@@ -105,25 +134,42 @@ class Node:
         Parses an Ethernet frame into its components.
         """
         frame = frame.decode('utf-8')
-        src_mac, dest_mac, data_length, data = frame.split(' ', 3)
-        return src_mac, dest_mac, int(data_length), data
+        src_mac, dest_mac, data_length, ethertype, data = frame.split(' ', 4)
+        return src_mac, dest_mac, int(data_length), int(ethertype), data
+    
+    def _parse_arp_packet(self, packet):
+        """
+        Parses an ARP packet into its components.
+        """
+        sender_mac, sender_ip, target_ip, target_mac, opcode, message = packet.split(' ', 5)
+        return {'sender_mac': sender_mac, 'sender_ip': sender_ip, 'target_ip': target_ip, 'target_mac': target_mac, 'opcode': int(opcode), 'message': message}
 
-    def _process_received_data(self, data, src_mac):
+    def _process_received_data(self, data, src_mac, ethertype):
         """
         Placeholder method for processing received data. To be overridden in subclasses.
         """
-        data = data.decode('utf-8')
-        # check if data is an encapsulated IP packet - if our self IP is in the data, then it should be an IP packet...?
-        if self.ip_address in data:
+        if ethertype == 0: # IP
             # if yes, extract ip header (to get the protocol and source ip)
             src_ip, dst_ip, protocol, data_length, ip_payload = data.split(' ', 4)
-            
+            protocol = int(protocol)
+
             if protocol == 0: # if protocol is ping
                 # respond to ping
                 pass
             elif protocol == 1: # if protocol is kill
                 # die
                 pass
+        elif ethertype == 1: # ARP
+            arp_packet = self._parse_arp_packet(data)
+
+            if arp_packet['opcode'] == 0: # if it's an ARP_QUERY
+                if arp_packet['target_ip'] == self.ip_address: # if they're querying for our MAC
+                # Send an ARP reply to the querying one
+                    arp_response = f"{arp_packet['sender_mac']} {arp_packet['sender_ip']} {arp_packet['target_ip']} {self.mac_address} {1} ARP_RESPONSE"
+                    self.send_ethernet_frame(arp_response, arp_packet['sender_mac'], 1)
+            elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
+                # Update ARP table
+                self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
 
         print(f"Data from {src_mac}: {data}")
 

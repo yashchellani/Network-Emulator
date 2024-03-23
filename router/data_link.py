@@ -69,12 +69,17 @@ class ReceiveMessage(threading.Thread):
                 # print(f"Connected devices: {connected_devices}")
 
                 received_message = received_message.decode("utf-8")
-                src_mac, dest_mac, data_length, data = received_message.split(' ', 3)
+                src_mac, dest_mac, data_length, ethertype, data = received_message.split(' ', 4)
+
+
+                # If broadcast address, send it back to the subnet group of the src mac
+                if dest_mac == "FF":
+                    dest_mac = src_mac
 
                 self.broadcast_to_group(received_message, dest_mac)
 
         except Exception as e:
-            print("Exception occurred: ", e)
+            print("Data link exception occurred: ", e)
         finally:
             with connected_devices_lock:
                 print(f"Client {self.address} disconnected")
