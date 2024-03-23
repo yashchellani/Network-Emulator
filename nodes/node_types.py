@@ -1,4 +1,5 @@
 from .node import Node
+import socket
 
 class BasicNode(Node):
     """
@@ -17,12 +18,17 @@ class MaliciousNode(Node):
     """
     def __init__(self, ip_address, mac_address):
         super().__init__(ip_address, mac_address)
+        self.sniffing_enabled = True
 
     def spoof_packet(self, target_ip, payload):
         pass
 
+    def disable_sniffing(self):
+        self.sniffing_enabled = False
     def sniff_traffic(self, packet):
-        pass
+        print(f"Sniffy sniffy: {packet}")
+        
+
 
 class FirewallNode(Node):
   def __init__(self, ip_address, mac_address, firewall, ids):
