@@ -65,17 +65,20 @@ def setup_network():
   simulate_network_traffic(ids, node1, node2, node3, node4, router)
 
   while True:
-    sleep(1)
-    command = input("What would you like to do? (exit, sniff, ping, kill): ")
-    if command == "ping":
-      num_of_pings = int(input("Input number of times to ping: "))
-      data_size = int(input("Input data size to ping: "))
-      node1.ping(dest_mac=node2.mac_address, data_size=data_size, count=num_of_pings)
-      print("pinging")
-      
-    elif command == "exit":
-      cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server)
-    print("Command: ", command)
+      sleep(1)
+      command = input("What would you like to do? (exit, sniff, ping, kill): ")
+      if command == "ping":
+          dest_ip = input("Input destination IP address to ping: ")
+          num_of_pings = int(input("Input number of times to ping: "))
+          node1.ping(dest_ip=dest_ip, count=num_of_pings)
+          print("Pinging...")
+      elif command == "exit":
+          cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server)
+          print("Exiting...")
+          break
+      print("Command: ", command)
+
+
 
 def simulate_network_traffic(ids, node1, node2, node3, node4, router):
   node1.send_data(data='Hello Node2', dest_mac=node2.mac_address, dest_ip=node2.ip_address)

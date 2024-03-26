@@ -128,41 +128,62 @@ class Node:
             del self.connected_nodes[node_mac]    
                 
      
-    def ping(self, dest_mac, data_size, count):
+    def ping(self, dest_ip, count):
         """
-        Emulates pinging Ethernet to a specific destination.
+        Emulates pinging IP addresses with ICMP packets to a specific destination.
         """
         for _ in range(count):
             try:
-                # Create a payload with the specified size
-                payload = b'0' * data_size
-                ethernet_frame = self._construct_ethernet_frame(dest_mac, payload)
-                self.data_link_socket.send(ethernet_frame)
-                print(f"Pinging {dest_mac} with data size {data_size} bytes")
-                
-                # Wait for a response
+                # Send ICMP ping request
+                icmp_request = "PING"
+                self.send_data(data=icmp_request, dest_mac=self.mac_address, dest_ip=dest_ip)
+
+                # Record the time when the ping was sent
+                time_ping_sent = time()
+
+                # Wait for ICMP ping response
                 response_received = False
                 timeout = 5  # Adjust timeout as needed
                 start_time = time()
                 while not response_received and time() - start_time < timeout:
                     try:
+                        # Receive the ICMP ping response
                         data, _ = self.data_link_socket.recvfrom(1024)  # Adjust buffer size as needed
-                        src_mac, _, _, _ = self._parse_ethernet_frame(data)
-                        if src_mac == dest_mac:  # Assuming the response comes from the destination
-                            print(f"Response received from {dest_mac}: {data}")
+                        
+                        # Record the time when the ping response was received
+                        time_ping_echo_received = time()
+                        
+                        # Extract source IP address from the received data
+                        src_ip = data.decode('utf-8')
+                        
+                        # Check if the response is from the destination IP address
+                        if src_ip == dest_ip:
+                            # Calculate round-trip time (RTT)
+                            rtt = time_ping_echo_received - time_ping_sent
+                            print(f"Response received from {dest_ip}: RTT={rtt:.6f} seconds")
                             response_received = True
                     except socket.timeout:
                         pass
-                    
+
                 if not response_received:
-                    print(f"No response received from {dest_mac} within {timeout} seconds.")
-                
+                    print(f"No response received from {dest_ip} within {timeout} seconds.")
+                    
                 # Sleep between pings (if necessary)
                 sleep(1)
             except ConnectionAbortedError as e:
                 print(f"Failed to send data, connection was aborted: {e}")
             except Exception as e:
                 print(f"An unexpected error occurred: {e}")
+
+
+
+    def send_ping(self, dest_ip):
+        """
+        Constructs and sends a ping packet to the specified destination IP address.
+        """
+        ping_packet = f"{self.ip_address} {dest_ip} {time()}"
+        self.data_link_socket.sendto(ping_packet.encode(), ('localhost', 8122))
+
 
     def respond_to_ping(self):
         """
