@@ -89,7 +89,7 @@ class Router:
       if arp_packet['opcode'] == 0: # if it's an ARP_QUERY
         if arp_packet['target_ip'] == interface['ip']: # if they're querying for our MAC
            # Send an ARP reply to the querying one
-           arp_response = f"{arp_packet['sender_mac']} {arp_packet['sender_ip']} {arp_packet['target_ip']} {interface['mac']} {1} ARP_RESPONSE"
+           arp_response = f"{arp_packet['sender_mac']} {arp_packet['sender_ip']} {interface['mac']} {arp_packet['target_ip']} {1} ARP_RESPONSE"
            ethernet_frame = self._construct_ethernet_frame(interface['mac'], "FF", 1, arp_response)
            self._send_frame(ethernet_frame, interface)
       elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
@@ -109,7 +109,7 @@ class Router:
     if outgoing_interface:
         if ip_packet['dest_ip'] not in self.arp_table:
           # send ARP query out of the outgoing interface
-          arp_query = f"{outgoing_interface['mac']} {outgoing_interface['ip']} {ip_packet['dest_ip']} \xFF {0} ARP_QUERY"
+          arp_query = f"{outgoing_interface['mac']} {outgoing_interface['ip']} 00 {ip_packet['dest_ip']} {0} ARP_QUERY"
           ethernet_frame = self._construct_ethernet_frame(outgoing_interface['mac'], "FF", 1, arp_query)
           self._send_frame(ethernet_frame, outgoing_interface)
 
@@ -169,8 +169,8 @@ class Router:
     """
     Parses an ARP packet into its components.
     """
-    sender_mac, sender_ip, target_ip, target_mac, opcode, message = packet.split(' ', 5)
-    return {'sender_mac': sender_mac, 'sender_ip': sender_ip, 'target_ip': target_ip, 'target_mac': target_mac, 'opcode': int(opcode), 'message': message}
+    sender_mac, sender_ip, target_mac, target_ip, opcode, message = packet.split(' ', 5)
+    return {'sender_mac': sender_mac, 'sender_ip': sender_ip, 'target_mac': target_mac, 'target_ip': target_ip, 'opcode': int(opcode), 'message': message}
 
   @staticmethod
   def _construct_ethernet_frame(src_mac, dest_mac, ethertype, data):

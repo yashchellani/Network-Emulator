@@ -40,7 +40,7 @@ class Node:
         # If default gateway not in ARP table, send ARP query
         if self.default_gateway not in self.arp_table:
             # send ARP query to our data link
-            arp_query = f"{self.mac_address} {self.ip_address} {self.default_gateway} \xFF {0} ARP_QUERY"
+            arp_query = f"{self.mac_address} {self.ip_address} 00 {self.default_gateway} {0} ARP_QUERY"
             self.send_ethernet_frame(arp_query, "FF", 1)
 
             # wait until a response
@@ -154,8 +154,8 @@ class Node:
         """
         Parses an ARP packet into its components.
         """
-        sender_mac, sender_ip, target_ip, target_mac, opcode, message = packet.split(' ', 5)
-        return {'sender_mac': sender_mac, 'sender_ip': sender_ip, 'target_ip': target_ip, 'target_mac': target_mac, 'opcode': int(opcode), 'message': message}
+        sender_mac, sender_ip, target_mac, target_ip, opcode, message = packet.split(' ', 5)
+        return {'sender_mac': sender_mac, 'sender_ip': sender_ip, 'target_mac': target_mac, 'target_ip': target_ip, 'opcode': int(opcode), 'message': message}
 
     def _process_received_data(self, data, src_mac, ethertype):
         """
@@ -178,7 +178,7 @@ class Node:
             if arp_packet['opcode'] == 0: # if it's an ARP_QUERY
                 if arp_packet['target_ip'] == self.ip_address: # if they're querying for our MAC
                 # Send an ARP reply to the querying one
-                    arp_response = f"{arp_packet['sender_mac']} {arp_packet['sender_ip']} {arp_packet['target_ip']} {self.mac_address} {1} ARP_RESPONSE"
+                    arp_response = f"{arp_packet['sender_mac']} {arp_packet['sender_ip']} {self.mac_address} {arp_packet['target_ip']} {1} ARP_RESPONSE"
                     self.send_ethernet_frame(arp_response, arp_packet['sender_mac'], 1)
             elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
                 # Update ARP table
