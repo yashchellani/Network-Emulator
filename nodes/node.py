@@ -42,9 +42,16 @@ class Node:
             # send ARP query to our data link
             arp_query = f"{self.mac_address} {self.ip_address} {self.default_gateway} \xFF {0} ARP_QUERY"
             self.send_ethernet_frame(arp_query, "FF", 1)
+
             # wait until a response
+            timeout_limit = 5
+            timeout_counter = 0
             while self.default_gateway not in self.arp_table:
+                if timeout_counter > timeout_limit:
+                    print("Timeout while waiting for ARP resolution...")
+                    return
                 sleep(1) # life would be better with asyncio
+                timeout_counter += 1
 
         # Find the default gateway's MAC address
         dest_mac = self.arp_table[self.default_gateway]

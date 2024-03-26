@@ -114,8 +114,14 @@ class Router:
           self._send_frame(ethernet_frame, outgoing_interface)
 
         # wait until a response
+        timeout_limit = 5
+        timeout_counter = 0
         while ip_packet['dest_ip'] not in self.arp_table:
+            if timeout_counter > timeout_limit:
+               print("Timeout while waiting for ARP resolution...")
+               return
             sleep(1) # life would be better with asyncio
+            timeout_counter += 1
 
         # Find the new MAC address on the ARP table
         new_dest_mac = self.arp_table[ip_packet['dest_ip']]
