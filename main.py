@@ -56,6 +56,36 @@ def setup_network():
   while True:
     sleep(10)
     command = input("What would you like to do? (exit, sniff, ping, kill): ")
+    if command == "ping":
+      src = input("src(eg:N1): ")
+      dest = input("dest(eg:N2): ")
+      count = int(input("count: "))
+      
+      run = True
+      while(run):
+        if src == "N1": srcNode = node1
+        elif src == "N2": srcNode = node2
+        elif src == "N3": srcNode = node3
+        elif src == "N4": srcNode = node4
+        
+        if dest == "N1": destNode = node1
+        elif dest == "N2": destNode = node2
+        elif dest == "N3": destNode = node3
+        elif dest == "N4": destNode = node4
+          
+        if src == dest:
+          input("src and dest cannot be the same!")
+          src = input("src")
+          dest = input("dest")
+        else: run = False
+        
+        print(srcNode)
+        print(destNode)
+        
+        data = "00000"
+        for c in range(count):
+          srcNode.send_ip_packet(data, destNode.ip_address, protocol=0)
+        
     if command == "exit":
       cleanup(node1, node2, node3,  node4, router, data_link, data_link_2, data_link_server)
     elif command == "sniff":
@@ -67,10 +97,10 @@ def setup_network():
 def simulate_network_traffic(ids, node1, node2, node3, node4, router):
   # Testing sending over IP
   node1.send_ip_packet(data='Hello Node2', dest_ip=node2.ip_address, protocol=3) # placeholder protocol for messaging
-  node2.send_ip_packet(data='Hello Node1', dest_ip=node1.ip_address, protocol=3)
-  # # Testing sending over Ethernet (nodes in the same LAN)
-  node2.send_ethernet_frame(data='MALICIOUS PAYLOAD', dest_mac=node3.mac_address, ethertype=3) # placeholder ethertype for random
-  node3.send_ethernet_frame(data='Hello Node4', dest_mac=node4.mac_address, ethertype=3)
+  # node2.send_ip_packet(data='Hello Node1', dest_ip=node1.ip_address, protocol=3)
+  # # # Testing sending over Ethernet (nodes in the same LAN)
+  # node2.send_ethernet_frame(data='MALICIOUS PAYLOAD', dest_mac=node3.mac_address, ethertype=3) # placeholder ethertype for random
+  # node3.send_ethernet_frame(data='Hello Node4', dest_mac=node4.mac_address, ethertype=3)
   
 
 def cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server):
