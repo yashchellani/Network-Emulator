@@ -65,7 +65,11 @@ def setup_network():
     command = input("What would you like to do? (exit, sniff, ping, kill): ")
     if command == "ping":
       src = input("src(eg:N1): ")
+      while src not in nodes_dict:
+        src = input("src(eg:N1): ")
       dest = input("dest(eg:N2): ")
+      while dest not in nodes_dict:
+        dest = input("dest(eg:N2): ")
       count = int(input("count: "))
       
       run = True
