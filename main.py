@@ -31,13 +31,13 @@ def setup_network():
   data_link_server = ListenConnections(sockets=[data_link, data_link_2])
   data_link_server.start()
 
-  node1 = BasicNode(ip_address='0x1A', mac_address='N1')
-  node2 = MaliciousNode(ip_address='0x2A', mac_address='N2')
-  node3 = FirewallNode(ip_address='0x3A', mac_address='N3', firewall=firewall, ids=ids)
-  node4 = BasicNode(ip_address='0x4A', mac_address='N4')
+  node1 = BasicNode(ip_address='\x1A', mac_address='N1')
+  node2 = MaliciousNode(ip_address='\x2A', mac_address='N2')
+  node3 = FirewallNode(ip_address='\x2B', mac_address='N3', firewall=firewall, ids=ids)
+  node4 = BasicNode(ip_address='\x2C', mac_address='N4')
   router = Router(interface_configs=[
-    {'ip': '0x11', 'mac': 'R1', 'network': '192.168.1.0/24'},
-    {'ip': '0x21', 'mac': 'R2', 'network': '192.168.2.0/24'}
+    {'ip': '\x11', 'mac': 'R1', 'network': '\x10/4', 'data_link_address': ('localhost', 8122)}, # old network: 192.168.1.0/24
+    {'ip': '\x21', 'mac': 'R2', 'network': '\x20/4', 'data_link_address': ('localhost', 8123)} # old network: 192.168.2.0/24
   ])
 
   nodes = [node1, node2, node3, node4]
@@ -47,13 +47,14 @@ def setup_network():
 
   # Assuming Router class also has a connect_to_data_link method
   router.connect_to_data_link()
+  router.start_receiving()
 
   sleep(1)
   print("Simulating network traffic...")
   simulate_network_traffic(ids, node1, node2, node3, node4, router)
 
   while True:
-    sleep(1)
+    sleep(10)
     command = input("What would you like to do? (exit, sniff, ping, kill): ")
     if command == "exit":
       cleanup(node1, node2, node3,  node4, router, data_link, data_link_2, data_link_server)
@@ -64,10 +65,12 @@ def setup_network():
     print("Command: ", command)
 
 def simulate_network_traffic(ids, node1, node2, node3, node4, router):
-  node1.send_data(data='Hello Node2', dest_mac=node2.mac_address, dest_ip=node2.ip_address)
-  node2.send_data(data='Hello Node2', dest_mac=node1.mac_address, dest_ip=node1.ip_address)
-  node2.send_data(data='MALICIOUS PAYLOAD', dest_mac=node3.mac_address, dest_ip=node3.ip_address)
-  node3.send_data(data='Hello Node4', dest_mac=node4.mac_address, dest_ip=node4.ip_address)
+  # Testing sending over IP
+  node1.send_ip_packet(data='Hello Node2', dest_ip=node2.ip_address, protocol=3) # placeholder protocol for messaging
+  node2.send_ip_packet(data='Hello Node1', dest_ip=node1.ip_address, protocol=3)
+  # # Testing sending over Ethernet (nodes in the same LAN)
+  node2.send_ethernet_frame(data='MALICIOUS PAYLOAD', dest_mac=node3.mac_address, ethertype=3) # placeholder ethertype for random
+  node3.send_ethernet_frame(data='Hello Node4', dest_mac=node4.mac_address, ethertype=3)
   
 
 def cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_link_server):
@@ -76,6 +79,7 @@ def cleanup(node1, node2, node3, node4, router, data_link, data_link_2, data_lin
   node2.stop_receiving()
   node3.stop_receiving()
   node4.stop_receiving()
+  router.shutdown()
   data_link_server.stop()
   data_link_server.join()
   print("Goodbye!")
