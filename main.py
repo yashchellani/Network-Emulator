@@ -53,6 +53,13 @@ def setup_network():
   print("Simulating network traffic...")
   simulate_network_traffic(ids, node1, node2, node3, node4, router)
 
+  nodes_dict = {
+    "N1": node1,
+    "N2": node2,
+    "N3": node3,
+    "N4": node4
+  }
+
   while True:
     sleep(10)
     command = input("What would you like to do? (exit, sniff, ping, kill): ")
@@ -63,15 +70,8 @@ def setup_network():
       
       run = True
       while(run):
-        if src == "N1": srcNode = node1
-        elif src == "N2": srcNode = node2
-        elif src == "N3": srcNode = node3
-        elif src == "N4": srcNode = node4
-        
-        if dest == "N1": destNode = node1
-        elif dest == "N2": destNode = node2
-        elif dest == "N3": destNode = node3
-        elif dest == "N4": destNode = node4
+        srcNode = nodes_dict[src]
+        destNode = nodes_dict[dest]
           
         if src == dest:
           input("src and dest cannot be the same!")
