@@ -1,10 +1,10 @@
 class Firewall:
-  def __init__(self, rules=[]):
+  def __init__(self, *args):
     """
     Initializes the Firewall with a list of filtering rules.
     Each rule is a dictionary specifying what action to take (allow or block) for given conditions.
     """
-    self.rules = rules
+    self.rules = args[0] if args else []
 
   def apply_rules(self, packet):
     """

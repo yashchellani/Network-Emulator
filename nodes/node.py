@@ -2,7 +2,7 @@ import socket
 import threading
 from time import sleep
 class Node:
-    def __init__(self, ip_address, mac_address, firewall=None, ids=None):
+    def __init__(self, ip_address, mac_address, command_queue, firewall=None, ids=None):
         self.ip_address = ip_address
         self.mac_address = mac_address
         self.data_link_address = ('localhost', 8122) if mac_address == 'N1' else ('localhost', 8123)
@@ -11,7 +11,7 @@ class Node:
         self.receiving_thread = None
         self.firewall = firewall
         self.ids = ids
-        self.ids_lock = threading.Lock()
+        # self.ids_lock = threading.Lock()
 
         # TODO: Come up with a better way of calculating the default gateway (input it when initializing the node?)
         # Cause yes we can derive it from the IP address but right now we're assuming subnet mask is always 4 bits in front
@@ -22,9 +22,43 @@ class Node:
 
         self.arp_table = {}
         self.connected_nodes = {}
+        self.command_queue = command_queue
+        self.start_listening()
+
+    def start_listening(self):
+        """
+        New thread to listen for commands from the main process.
+        This process will be run when we plan to execute commands in a node process from the main process.
+        For example: call the send_ip_packet method from the main process.
+        """
+        def listen_for_commands():
+            while True:
+                command = self.command_queue.get()
+                if command is None:
+                    break
+                self.execute_command(command)
+
+        threading.Thread(target=listen_for_commands).start()
+
+    def execute_command(self, command):
+        """
+        Execute a command received from the main process.
+        """
+        if command['command'] == 'send_ip_packet':
+            self.send_ip_packet(command['data'], command['dest_ip'], command['protocol'])
+        elif command['command'] == 'stop_receiving':
+            self.stop_receiving()
+        elif command['command'] == 'disconnect_from_node':
+            self.disconnect_from_node(command['node_mac'])
+        elif command['command'] == 'connect_to_node':
+            self.connect_to_node(command['node_mac'], command['node_ip'])
+        elif command['command'] == 'stop':
+            self.running = False
+            self.stop_receiving()
 
     def connect_to_data_link(self):
         """Establishes a connection to the data link server."""
+
         self.data_link_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.data_link_socket.connect(self.data_link_address)
         print(f"\n{self.mac_address} connected to data link")
@@ -33,12 +67,10 @@ class Node:
         """
         Emulates sending data over IP to a specific destination
         """
-
-        # TODO: Current assumption - if you're sending over IP, you just directly send to default gateway.
-        # Idk if we should implement being able to send IP packets to devices in the same network
-
+        print(f"\nSending IP packet to {dest_ip} from {self.ip_address}")
         # If default gateway not in ARP table, send ARP query
         if self.default_gateway not in self.arp_table:
+            print(f"Default gateway {self.default_gateway} not in ARP table. Sending ARP query...")
             # send ARP query to our data link
             arp_query = f"{self.mac_address} {self.ip_address} 00 {self.default_gateway} {0} ARP_QUERY"
             self.send_ethernet_frame(arp_query, "FF", 1)
@@ -50,7 +82,7 @@ class Node:
                 if timeout_counter > timeout_limit:
                     print("Timeout while waiting for ARP resolution...")
                     return
-                sleep(1) # life would be better with asyncio
+                sleep(1)
                 timeout_counter += 1
 
         # Find the default gateway's MAC address
@@ -90,8 +122,8 @@ class Node:
                     
                     if self.ids:
                         print(f"\nAnalyzing packet: {data}")
-                        with self.ids_lock:  # Acquire the lock
-                            self.ids.analyze_packet(data)
+                        # with self.ids_lock:  # Acquire the lock
+                        self.ids.analyze_packet(data)
 
                     src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
                     print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")

@@ -5,8 +5,8 @@ class BasicNode(Node):
     """
     A basic network node type that can send and receive messages but has no special behaviors.
     """
-    def __init__(self, ip_address, mac_address):
-        super().__init__(ip_address, mac_address)
+    def __init__(self, ip_address, mac_address, message_queue=None):
+        super().__init__(ip_address, mac_address, message_queue)
 
     def receive_packet(self, packet):
         print(f"Received packet: {packet}")
@@ -16,8 +16,8 @@ class MaliciousNode(Node):
     """
     A malicious node capable of conducting network attacks, such as IP spoofing or sniffing.
     """
-    def __init__(self, ip_address, mac_address):
-        super().__init__(ip_address, mac_address)
+    def __init__(self, ip_address, mac_address, message_queue=None):
+        super().__init__(ip_address, mac_address, message_queue)
         self.sniffing_enabled = True
 
     def spoof_packet(self, target_ip, payload):
@@ -29,10 +29,9 @@ class MaliciousNode(Node):
         print(f"Sniffy sniffy: {packet}")
         
 
-
 class FirewallNode(Node):
-  def __init__(self, ip_address, mac_address, firewall, ids):
-    super().__init__(ip_address, mac_address, firewall, ids)
+  def __init__(self, ip_address, mac_address, message_queue, firewall, ids):
+    super().__init__(ip_address, mac_address, message_queue, firewall, ids)
 
   def _create_packet(self, data):
     # Create a packet dictionary from the data, this is a placeholder

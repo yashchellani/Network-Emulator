@@ -1,6 +1,8 @@
+import multiprocessing
 import select
 import socket
 import threading
+from time import sleep
 
 # Data structures for connected devices and their group memberships
 connected_devices = {}
@@ -16,15 +18,29 @@ node_definitions = {
 }
 
 class ListenConnections(threading.Thread):
-    def __init__(self, sockets):
+    def __init__(self):
         super().__init__()
-        self.sockets = sockets  # A list of sockets to listen to
+        self.sockets = []
         self.listeners = []
         self.running = True
+        self.initialize_sockets()
+
+    def initialize_sockets(self):
+        data_link = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_link.bind(("localhost", 8122))
+        data_link.listen(4)
+        self.sockets.append(data_link)
+        data_link_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_link_2.bind(("localhost", 8123))
+        data_link_2.listen(4)
+        self.sockets.append(data_link_2)
+    
+    def add_socket(self, socket):
+        self.sockets.append(socket)
 
     def run(self):
         print("Waiting for devices to connect to the LAN...")
-
+            
         while self.running:
             # The select function will block until there is at least one socket ready for processing
             readable, _, _ = select.select(self.sockets, [], [])
@@ -38,11 +54,12 @@ class ListenConnections(threading.Thread):
                             connected_devices[local_port] = [client]
                         else:
                             connected_devices[local_port].append(client)
-                        
-                    receiver_thread = ReceiveMessage(client_and_address=(client, address))
-                    receiver_thread.start()
-                    self.listeners.append(receiver_thread)
+                            
+                        receiver_thread = ReceiveMessage(client_and_address=(client, address))
+                        receiver_thread.start()
+                        self.listeners.append(receiver_thread)
                 except Exception as e:
+                    print("Failed to accept connection: ", e)
                     break
     
     def stop(self):
@@ -60,10 +77,12 @@ class ReceiveMessage(threading.Thread):
 
     def run(self):
         try:
+            print(f"Listening for messages from {self.address}...")
             while True:
+                
                 received_message = self.client.recv(1024)
                 if not received_message:
-                    break
+                    continue
 
                 print(f"Received from {self.address}: {received_message}")
                 # print(f"Connected devices: {connected_devices}")
@@ -75,7 +94,6 @@ class ReceiveMessage(threading.Thread):
                 # If broadcast address, send it back to the subnet group of the src mac
                 if dest_mac == "FF":
                     dest_mac = src_mac
-
                 self.broadcast_to_group(received_message, dest_mac)
 
         except Exception as e:
@@ -95,3 +113,4 @@ class ReceiveMessage(threading.Thread):
                         target_socket.sendall(message.encode("utf-8"))
                     except Exception as e:
                         print(f"Failed to send message to {target_socket.getpeername()}: {e}")
+

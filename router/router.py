@@ -21,7 +21,7 @@ class Router:
       # "\x2A": "N2",
       # "\x2B": "N3"
     } # TODO: un-hardcode
-    self.arp_table_lock = threading.Lock()
+    # self.arp_table_lock = threading.Lock()
     self.running = True
   
   def connect_to_data_link(self):
@@ -32,7 +32,10 @@ class Router:
         mac = interface['mac']
         data_link_address = interface['data_link_address']
         self.data_link_sockets[mac] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.data_link_sockets[mac].connect(data_link_address)
+        try:
+          self.data_link_sockets[mac].connect(data_link_address)
+        except Exception as e:
+          print(f"Error connecting to data link at {data_link_address}: {e}")
         print(f"\nInterface {ip}, MAC {mac} connected to data link at {data_link_address}")
 
   def start_receiving(self):
@@ -93,9 +96,9 @@ class Router:
            ethernet_frame = self._construct_ethernet_frame(interface['mac'], "FF", 1, arp_response)
            self._send_frame(ethernet_frame, interface)
       elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
-         with self.arp_table_lock:
+        #  with self.arp_table_lock:
           # Update ARP table
-          self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
+        self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
 
     print(f"Data from {src_mac}: {data}")
 
@@ -109,6 +112,7 @@ class Router:
     if outgoing_interface:
         if ip_packet['dest_ip'] not in self.arp_table:
           # send ARP query out of the outgoing interface
+          print("ARP resolution needed for IP:", ip_packet['dest_ip'])
           arp_query = f"{outgoing_interface['mac']} {outgoing_interface['ip']} 00 {ip_packet['dest_ip']} {0} ARP_QUERY"
           ethernet_frame = self._construct_ethernet_frame(outgoing_interface['mac'], "FF", 1, arp_query)
           self._send_frame(ethernet_frame, outgoing_interface)
