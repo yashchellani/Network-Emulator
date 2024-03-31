@@ -26,14 +26,12 @@ class ListenConnections(threading.Thread):
         self.initialize_sockets()
 
     def initialize_sockets(self):
-        data_link = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_link.bind(("localhost", 8122))
-        data_link.listen(4)
-        self.sockets.append(data_link)
-        data_link_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_link_2.bind(("localhost", 8123))
-        data_link_2.listen(4)
-        self.sockets.append(data_link_2)
+        ports = [8122, 8123]
+        for port in ports:
+            data_link = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            data_link.bind(("localhost", port))
+            data_link.listen(4)
+            self.sockets.append(data_link)
     
     def add_socket(self, socket):
         self.sockets.append(socket)

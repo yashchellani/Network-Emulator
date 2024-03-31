@@ -21,7 +21,7 @@ class Router:
       # "\x2A": "N2",
       # "\x2B": "N3"
     } # TODO: un-hardcode
-    # self.arp_table_lock = threading.Lock()
+    self.arp_table_lock = threading.Lock()
     self.running = True
   
   def connect_to_data_link(self):
@@ -96,9 +96,9 @@ class Router:
            ethernet_frame = self._construct_ethernet_frame(interface['mac'], "FF", 1, arp_response)
            self._send_frame(ethernet_frame, interface)
       elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
-        #  with self.arp_table_lock:
+        with self.arp_table_lock:
           # Update ARP table
-        self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
+          self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
 
     print(f"Data from {src_mac}: {data}")
 

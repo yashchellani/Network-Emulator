@@ -22,16 +22,12 @@ def start_router(interface_configs):
 def start_node(i, firewall, ids, message_queue):
     if i == 1:
         node = BasicNode(ip_address='\x1A', mac_address='N1', message_queue=message_queue)
-        print("Node 1 created")
     elif i == 2:
         node = MaliciousNode(ip_address='\x2A', mac_address='N2', message_queue=message_queue)
-        print("Node 2 created")
     elif i == 3:
         node = FirewallNode(ip_address='\x2B', mac_address='N3', message_queue=message_queue, firewall=firewall, ids=ids)
-        print("Node 3 created")
     elif i == 4:
         node = BasicNode(ip_address='\x2C', mac_address='N4', message_queue=message_queue)
-        print("Node 4 created")
     node.connect_to_data_link()
     node.start_receiving()
 
@@ -67,7 +63,7 @@ def setup_network():
         node_process.start()
         sleep(2)
     
-    sleep(10)
+    sleep(5)
     simulate_network_traffic(node_queues)
 
     return firewall, router_process, node_queues
@@ -80,3 +76,5 @@ def simulate_network_traffic(node_queues):
 
 if __name__ == '__main__':
     setup_network()
+
+
