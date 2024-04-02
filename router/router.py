@@ -37,33 +37,27 @@ class Router:
 
   def start_receiving(self):
         """Start a new thread to listen for incoming messages."""
-        for interface in self.interfaces:
-          self.data_link_sockets[interface['mac']].settimeout(5.0)  # Set the timeout for blocking socket operations
+        for interface in self.interfaces: 
           self.receiving_threads[interface['mac']] = threading.Thread(target=self.receive_data, args=(interface,))
           self.receiving_threads[interface['mac']].start()
 
   def receive_data(self, interface):
       """Continuously listen for incoming data and print it."""
-      self.data_link_sockets[interface['mac']].settimeout(5.0)  # Setting the timeout here as an example
       try:
           while self.running:
-              try:
-                  data, addr = self.data_link_sockets[interface['mac']].recvfrom(1024)  # Buffer size of 1024 bytes
+            data, addr = self.data_link_sockets[interface['mac']].recvfrom(1024)  # Buffer size of 1024 bytes
 
-                  src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-                  print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {interface['mac']}")
+            src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
+            print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {interface['mac']}")
 
-                  if dest_mac == interface['mac']:
-                      print(f"\nRouter Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
-                      self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
-                  elif dest_mac == "FF":
-                     print(f"\nReceived broadcast from {src_mac}")
-                     self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
-                  else:
-                      print(f"\nData not for me {interface['mac']}. Dropping data from {src_mac} to {dest_mac}.")
-              
-              except socket.timeout:
-                  break
+            if dest_mac == interface['mac']:
+                print(f"\nRouter Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
+                self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+            elif dest_mac == "FF":
+                print(f"\nReceived broadcast from {src_mac}")
+                self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+            else:
+                print(f"\nData not for me {interface['mac']}. Dropping data from {src_mac} to {dest_mac}.")
       except Exception as e:
           print("Router exception: ", e)
           self.running = False
@@ -90,19 +84,18 @@ class Router:
         if arp_packet['target_ip'] == interface['ip']: # if they're querying for our MAC
            # Send an ARP reply to the querying one
            arp_response = f"{arp_packet['sender_mac']} {arp_packet['sender_ip']} {interface['mac']} {arp_packet['target_ip']} {1} ARP_RESPONSE"
-           ethernet_frame = self._construct_ethernet_frame(interface['mac'], "FF", 1, arp_response)
+           ethernet_frame = self._construct_ethernet_frame(interface['mac'], arp_packet['sender_mac'], 1, arp_response)
            self._send_frame(ethernet_frame, interface)
       elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
          with self.arp_table_lock:
           # Update ARP table
           self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
 
-    print(f"Data from {src_mac}: {data}")
-
   def route_packet(self, ip_packet):
     """
     Routes an incoming IP packet to the correct interface based on the destination IP.
     """
+    print("\nRouting packet: ", ip_packet)
     # Determine the outgoing interface based on the destination IP
     outgoing_interface = self._find_outgoing_interface(ip_packet['dest_ip'])
     
@@ -118,8 +111,8 @@ class Router:
         timeout_counter = 0
         while ip_packet['dest_ip'] not in self.arp_table:
             if timeout_counter > timeout_limit:
-               print("Timeout while waiting for ARP resolution...")
-               return
+              print("Timeout while waiting for ARP resolution...")
+              return
             sleep(1) # life would be better with asyncio
             timeout_counter += 1
 
@@ -127,7 +120,8 @@ class Router:
         new_dest_mac = self.arp_table[ip_packet['dest_ip']]
 
         # Construct new Ethernet frame with the router's outgoing interface MAC and forward it
-        new_frame = self._construct_ethernet_frame(outgoing_interface['mac'], new_dest_mac, 0, ip_packet['data'])
+        reconstructed_ip_packet = f'{ip_packet["src_ip"]} {ip_packet["dest_ip"]} {ip_packet["protocol"]} {ip_packet["data_length"]} {ip_packet["data"]}'
+        new_frame = self._construct_ethernet_frame(outgoing_interface['mac'], new_dest_mac, 0, reconstructed_ip_packet)
         self._send_frame(new_frame, outgoing_interface)
     else:
         print("No route to host for IP:", ip_packet['dest_ip'])
@@ -207,4 +201,3 @@ class Router:
       finally:
           self.data_link_sockets[mac].close()
           self.receiving_threads[mac].join()
-

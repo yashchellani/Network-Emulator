@@ -51,7 +51,7 @@ def setup_network():
 
   sleep(1)
   print("Simulating network traffic...")
-  simulate_network_traffic(ids, node1, node2, node3, node4, router)
+  # simulate_network_traffic(ids, node1, node2, node3, node4, router)
 
   nodes_dict = {
     "N1": node1,

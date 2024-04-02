@@ -1,6 +1,7 @@
 import socket
 import threading
 from time import sleep
+from multiprocessing import Process
 class Node:
     def __init__(self, ip_address, mac_address, firewall=None, ids=None):
         self.ip_address = ip_address
@@ -11,7 +12,7 @@ class Node:
         self.receiving_thread = None
         self.firewall = firewall
         self.ids = ids
-        self.ids_lock = threading.Lock()
+        # self.ids_lock = threading.Lock()
 
         # TODO: Come up with a better way of calculating the default gateway (input it when initializing the node?)
         # Cause yes we can derive it from the IP address but right now we're assuming subnet mask is always 4 bits in front
@@ -43,15 +44,15 @@ class Node:
             arp_query = f"{self.mac_address} {self.ip_address} 00 {self.default_gateway} {0} ARP_QUERY"
             self.send_ethernet_frame(arp_query, "FF", 1)
 
-            # wait until a response
-            timeout_limit = 5
-            timeout_counter = 0
-            while self.default_gateway not in self.arp_table:
-                if timeout_counter > timeout_limit:
-                    print("Timeout while waiting for ARP resolution...")
-                    return
-                sleep(1) # life would be better with asyncio
-                timeout_counter += 1
+        # wait until a response
+        timeout_limit = 5
+        timeout_counter = 0
+        while self.default_gateway not in self.arp_table:
+            if timeout_counter > timeout_limit:
+                print("Timeout while waiting for ARP resolution...")
+                return
+            sleep(1) # life would be better with asyncio
+            timeout_counter += 1
 
         # Find the default gateway's MAC address
         dest_mac = self.arp_table[self.default_gateway]
@@ -76,48 +77,39 @@ class Node:
 
     def start_receiving(self):
         """Start a new thread to listen for incoming messages."""
-        self.data_link_socket.settimeout(5.0)  # Set the timeout for blocking socket operations
         self.receiving_thread = threading.Thread(target=self.receive_data)
         self.receiving_thread.start()
 
     def receive_data(self):
         """Continuously listen for incoming data and print it."""
-        self.data_link_socket.settimeout(5.0)  # Setting the timeout here as an example
         try:
             while self.running:
-                try:
-                    data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
-                    
-                    if self.ids:
-                        print(f"\nAnalyzing packet: {data}")
-                        with self.ids_lock:  # Acquire the lock
-                            self.ids.analyze_packet(data)
+                data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
+                if self.ids:
+                    print(f"\nAnalyzing packet: {data}")
+                    # with self.ids_lock:  # Acquire the lock
+                    self.ids.analyze_packet(data)
 
-                    src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-                    print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
+                src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
+                print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
 
-                    if self.firewall and self.firewall.is_mac_blocked(src_mac):
-                        print(f"\nIP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
-                        continue
+                if self.firewall and self.firewall.is_mac_blocked(src_mac):
+                    print(f"\nIP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
+                    continue
 
-                    if dest_mac == self.mac_address:
-                        print(f"\nYAYYYY Node {self.mac_address} - Received data: {ethernet_payload} from {src_mac}")
-                        self._process_received_data(ethernet_payload, src_mac, ethertype)
-                    elif dest_mac == "FF":
-                        print(f"\nReceived broadcast from {src_mac}")
-                        self._process_received_data(ethernet_payload, src_mac, ethertype)
-                    else:
-                        if hasattr(self, 'sniff_traffic'):
-                            print(f"Sniffing from {src_mac} to {dest_mac}")
-                            if self.sniffing_enabled:
-                                self.sniff_traffic(data)
-                        else:   
-                            print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}.")
-                        
-
-                except socket.timeout:
-                    break
-
+                if dest_mac == self.mac_address:
+                    print(f"\nYAYYYY Node {self.mac_address} - Received data: {ethernet_payload} from {src_mac}")
+                    self._process_received_data(ethernet_payload, src_mac, ethertype)
+                elif dest_mac == "FF":
+                    print(f"\nReceived broadcast from {src_mac}")
+                    self._process_received_data(ethernet_payload, src_mac, ethertype)
+                else:
+                    if hasattr(self, 'sniff_traffic'):
+                        print(f"Sniffing from {src_mac} to {dest_mac}")
+                        if self.sniffing_enabled:
+                            self.sniff_traffic(data)
+                    else:   
+                        print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}.")
         except Exception as e:
             self.running = False
 
@@ -161,6 +153,7 @@ class Node:
         """
         Placeholder method for processing received data. To be overridden in subclasses.
         """
+        print("\nProcessing received data...")
         if ethertype == 0: # IP
             # if yes, extract ip header (to get the protocol and source ip)
             src_ip, dst_ip, protocol, data_length, ip_payload = data.split(' ', 4)
@@ -168,6 +161,7 @@ class Node:
 
             if protocol == 0: # if protocol is ping
                 # respond to ping
+                # self.send_ip_packet("PING RESPONSE", src_ip, 0)
                 pass
             elif protocol == 1: # if protocol is kill
                 # die
@@ -177,14 +171,12 @@ class Node:
 
             if arp_packet['opcode'] == 0: # if it's an ARP_QUERY
                 if arp_packet['target_ip'] == self.ip_address: # if they're querying for our MAC
-                # Send an ARP reply to the querying one
+                    # Send an ARP reply to the querying one
                     arp_response = f"{arp_packet['sender_mac']} {arp_packet['sender_ip']} {self.mac_address} {arp_packet['target_ip']} {1} ARP_RESPONSE"
                     self.send_ethernet_frame(arp_response, arp_packet['sender_mac'], 1)
             elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
                 # Update ARP table
                 self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
-
-        print(f"Data from {src_mac}: {data}")
 
     def connect_to_node(self, node_mac, node_ip):
         """
