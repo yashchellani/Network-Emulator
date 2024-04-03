@@ -7,13 +7,13 @@
 - [x] Make code less spaghetti
 - [x] Allow nodes to accept messages from their LAN as well
 - [] Fix `router_main.py` to exit gracefully
-- [] Fix recvfrom issues (how to clear previous messages from buffer?)
+- [x] Fix recvfrom issues (how to clear previous messages from buffer?)
 - Implement protocols and functionalities: 
     - [x] ARP
-    - [] Kill
-    - [] Ping
+    - [x] Kill
+    - [x] Ping
     - [x] Option to drop packets not meant for it
-    - [] Router encapsulation
+    - [x] Router encapsulation
     - [x] Firewall
-    - [] IP Spoofing from Node 2
+    - [ ] IP Spoofing from Node 2
 - [] Implement bonus functionalities
