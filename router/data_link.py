@@ -39,7 +39,7 @@ class ListenConnections(threading.Thread):
                         else:
                             connected_devices[local_port].append(client)
                         
-                    receiver_thread = ReceiveMessage(client_and_address=(client, address))
+                    receiver_thread = ReceiveMessage(client_and_address=(client, address), local_port=local_port)
                     receiver_thread.start()
                     self.listeners.append(receiver_thread)
                 except Exception as e:
@@ -54,9 +54,10 @@ class ListenConnections(threading.Thread):
             socket.close()
 
 class ReceiveMessage(threading.Thread):
-    def __init__(self, client_and_address):
+    def __init__(self, client_and_address, local_port):
         threading.Thread.__init__(self)
         self.client, self.address = client_and_address
+        self.local_port = local_port
 
     def run(self):
         try:
@@ -83,6 +84,7 @@ class ReceiveMessage(threading.Thread):
         finally:
             with connected_devices_lock:
                 print(f"Client {self.address} disconnected")
+                connected_devices[self.local_port].remove(self.client)
                 self.client.close()
 
     def broadcast_to_group(self, message, dest_mac):

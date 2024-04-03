@@ -44,15 +44,16 @@ class Node:
             arp_query = f"{self.mac_address} {self.ip_address} 00 {self.default_gateway} {0} ARP_QUERY"
             self.send_ethernet_frame(arp_query, "FF", 1)
 
-        # wait until a response
-        timeout_limit = 5
-        timeout_counter = 0
-        while self.default_gateway not in self.arp_table:
-            if timeout_counter > timeout_limit:
-                print("Timeout while waiting for ARP resolution...")
-                return
-            sleep(1) # life would be better with asyncio
-            timeout_counter += 1
+            # wait until a response
+            timeout_limit = 5
+            timeout_counter = 0
+            while self.default_gateway not in self.arp_table:
+                if timeout_counter > timeout_limit:
+                    print("Timeout while waiting for ARP resolution...")
+                    return
+                print("Waiting for ARP response...")
+                sleep(1) # life would be better with asyncio
+                timeout_counter += 1
 
         # Find the default gateway's MAC address
         dest_mac = self.arp_table[self.default_gateway]
@@ -160,12 +161,12 @@ class Node:
             protocol = int(protocol)
 
             if protocol == 0: # if protocol is ping
-                # respond to ping
-                # self.send_ip_packet("PING RESPONSE", src_ip, 0)
-                pass
+                if ip_payload == "PING":
+                    # respond to ping
+                    self.send_ip_packet("PING_RESPONSE", src_ip, 0)
             elif protocol == 1: # if protocol is kill
-                # die
-                pass
+                print("Ded X_X")
+                self.stop_receiving()
         elif ethertype == 1: # ARP
             arp_packet = self._parse_arp_packet(data)
 

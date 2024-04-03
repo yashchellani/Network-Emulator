@@ -86,7 +86,7 @@ def setup_network():
         print(srcNode)
         print(destNode)
         
-        data = "00000"
+        data = "PING"
         for c in range(count):
           srcNode.send_ip_packet(data, destNode.ip_address, protocol=0)
         

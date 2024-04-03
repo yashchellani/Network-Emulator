@@ -27,8 +27,12 @@ if __name__ == '__main__':
     node.connect_to_data_link()
     node.start_receiving()
   
-    while(True):
+    while(node.running):
         command = input("What would you like to do? (ping, kill, exit): ")
+        if node.running is False:
+           print("Node has stopped running")
+           exit()
+           
         if command == "ping":
             dest = input("Destination node: ")
             dest_node = node_configurations[dest]
@@ -39,6 +43,13 @@ if __name__ == '__main__':
                 sleep(1)
 
             sleep(10)
+        elif command == "kill":
+           dest = input("Destination node: ")
+           dest_node = node_configurations[dest]
+
+           node.send_ip_packet("KILL", dest_node.ip_address, protocol=1)
+
+           sleep(10)
         elif command == "exit":
            node.stop_receiving()
            print("Goodbye!")
