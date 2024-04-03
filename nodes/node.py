@@ -34,6 +34,7 @@ class Node:
         """
         Emulates sending data over IP to a specific destination
         """
+        print("\nSending IP packet...")
 
         # TODO: Current assumption - if you're sending over IP, you just directly send to default gateway.
         # Idk if we should implement being able to send IP packets to devices in the same network
@@ -163,7 +164,8 @@ class Node:
             if protocol == 0: # if protocol is ping
                 if ip_payload == "PING":
                     # respond to ping
-                    self.send_ip_packet("PING_RESPONSE", src_ip, 0)
+                    t = threading.Thread(target=self.send_ip_packet, args=("PING_RESPONSE", src_ip, 0,), daemon=True)
+                    t.start()
             elif protocol == 1: # if protocol is kill
                 print("Ded X_X")
                 self.stop_receiving()
