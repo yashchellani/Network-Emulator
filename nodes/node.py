@@ -30,7 +30,7 @@ class Node:
         self.data_link_socket.connect(self.data_link_address)
         print(f"\n{self.mac_address} connected to data link")
 
-    def send_ip_packet(self, data, dest_ip, protocol):
+    def send_ip_packet(self, data, dest_ip, protocol, src_ip=None):
         """
         Emulates sending data over IP to a specific destination
         """
@@ -60,7 +60,11 @@ class Node:
         dest_mac = self.arp_table[self.default_gateway]
         
         data_length = len(data)
-        ip_packet = f"{self.ip_address} {dest_ip} {str(protocol)} {data_length} {data}"
+
+        if src_ip is None:
+            src_ip = self.ip_address
+
+        ip_packet = f"{src_ip} {dest_ip} {str(protocol)} {data_length} {data}"
 
         self.send_ethernet_frame(ip_packet, dest_mac, 0) # encapsulate inside ethernet frame
 

@@ -20,11 +20,12 @@ class MaliciousNode(Node):
         super().__init__(ip_address, mac_address)
         self.sniffing_enabled = True
 
-    def spoof_packet(self, target_ip, payload):
-        pass
+    def spoof_packet(self, dest_ip, fake_ip):
+        self.send_ip_packet("PING", dest_ip, 0, fake_ip)
 
     def disable_sniffing(self):
         self.sniffing_enabled = False
+
     def sniff_traffic(self, packet):
         print(f"Sniffy sniffy: {packet}")
         

@@ -28,7 +28,7 @@ if __name__ == '__main__':
     node.start_receiving()
   
     while(node.running):
-        command = input("What would you like to do? (ping, kill, exit): ")
+        command = input("What would you like to do? (ping, kill, spoof, exit): ")
         if node.running is False:
            print("Node has stopped running")
            exit()
@@ -50,6 +50,18 @@ if __name__ == '__main__':
            node.send_ip_packet("KILL", dest_node.ip_address, protocol=1)
 
            sleep(10)
+        elif command == "spoof":
+           if not isinstance(node, MaliciousNode):
+              print("You are a benign node, unable to spoof!")
+           else:
+              dest = input("Destination node: ")
+              fake_source = input("Spoofed source node: ")
+
+              dest_node = node_configurations[dest]
+              fake_node = node_configurations[fake_source]
+
+              node.spoof_packet(dest_node.ip_address, fake_node.ip_address)
+
         elif command == "exit":
            node.stop_receiving()
            print("Goodbye!")
