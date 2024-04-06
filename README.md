@@ -15,5 +15,6 @@
     - [x] Option to drop packets not meant for it
     - [x] Router encapsulation
     - [x] Firewall
-    - [ ] IP Spoofing from Node 2
+    - [x] IP Spoofing from Node 2
 - [] Implement bonus functionalities
+    - [x] ARP Spoofing
