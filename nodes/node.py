@@ -36,19 +36,19 @@ class Node:
         """
         print("\nSending IP packet...")
 
-        # TODO: Current assumption - if you're sending over IP, you just directly send to default gateway.
-        # Idk if we should implement being able to send IP packets to devices in the same network
+        # If IP is part of our LAN, send to it directly, otherwise go through the default gateway
+        arp_dest = dest_ip if self._ip_in_network(dest_ip) else self.default_gateway
 
-        # If default gateway not in ARP table, send ARP query
-        if self.default_gateway not in self.arp_table:
+        # If destination not in ARP table, send ARP query
+        if arp_dest not in self.arp_table:
             # send ARP query to our data link
-            arp_query = f"{self.mac_address} {self.ip_address} 00 {self.default_gateway} {0} ARP_QUERY"
+            arp_query = f"{self.mac_address} {self.ip_address} 00 {arp_dest} {0} ARP_QUERY"
             self.send_ethernet_frame(arp_query, "FF", 1)
 
             # wait until a response
             timeout_limit = 5
             timeout_counter = 0
-            while self.default_gateway not in self.arp_table:
+            while arp_dest not in self.arp_table:
                 if timeout_counter > timeout_limit:
                     print("Timeout while waiting for ARP resolution...")
                     return
@@ -56,8 +56,8 @@ class Node:
                 sleep(1) # life would be better with asyncio
                 timeout_counter += 1
 
-        # Find the default gateway's MAC address
-        dest_mac = self.arp_table[self.default_gateway]
+        # Find the MAC address
+        dest_mac = self.arp_table[arp_dest]
         
         data_length = len(data)
 
@@ -197,3 +197,15 @@ class Node:
         """
         if node_mac in self.connected_nodes:
             del self.connected_nodes[node_mac]
+
+    def _ip_in_network(self, target_ip):
+        """
+        Checks if an IP address belongs to our LAN
+        """
+        ip_hex = ord(self.default_gateway)
+        target_hex = ord(target_ip)
+
+        if (ip_hex >> 4 & target_hex >> 4) > 0:
+            return True
+        else:
+            return False     
