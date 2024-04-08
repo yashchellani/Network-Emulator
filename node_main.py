@@ -109,8 +109,7 @@ if __name__ == '__main__':
              else:
                dest = input("Destination node: ")
                dest_node = node_configurations[dest]
-   
-               node.ddos_attack(dest_node.ip_address)
+               node.ddos_attack(dest_node.ip_address, src_ip=node.ip_address)
         elif command == "exit":
            record_node_running(node_type, False)
            node.stop_receiving()

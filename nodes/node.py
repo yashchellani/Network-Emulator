@@ -184,7 +184,9 @@ class Node:
             elif arp_packet['opcode'] == 1: # if it's an ARP_RESPONSE
                 # Update ARP table
                 self.arp_table[arp_packet['target_ip']] = arp_packet['target_mac'] # Vulnerability here: we don't check if we sent out an ARP request previously :)
-
+        else:
+            print(f"Unknown ethertype: {ethertype}")
+            
     def connect_to_node(self, node_mac, node_ip):
         """
         Connects to another node by storing its MAC and IP addresses.

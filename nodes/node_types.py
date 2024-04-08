@@ -57,9 +57,9 @@ class MaliciousNode(Node):
     def sniff_traffic(self, packet):
         print(f"Sniffy sniffy: {packet}")
     
-    def ddos_attack(self, dest_ip):
+    def ddos_attack(self, dest_ip, src_ip):
         for _ in range(100):
-            self.send_ip_packet("DDOS", dest_ip, 0)
+            self.send_ip_packet("DDOS", dest_ip, 0, src_ip)
             sleep(0.1)
 
 
