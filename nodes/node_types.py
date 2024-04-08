@@ -56,14 +56,13 @@ class MaliciousNode(Node):
 
     def sniff_traffic(self, packet):
         print(f"Sniffy sniffy: {packet}")
-        
+    
+    def ddos_attack(self, dest_ip):
+        for _ in range(100):
+            self.send_ip_packet("DDOS", dest_ip, 0)
+            sleep(0.1)
 
 
 class FirewallNode(Node):
   def __init__(self, ip_address, mac_address, firewall, ids):
     super().__init__(ip_address, mac_address, firewall, ids)
-
-  def _create_packet(self, data):
-    # Create a packet dictionary from the data, this is a placeholder
-    # In a real implementation, you would extract packet details such as src_ip, dest_ip, etc.
-    return {'data': data}

@@ -57,7 +57,7 @@ if __name__ == '__main__':
     node.start_receiving()
   
     while(node.running):
-        command = input("What would you like to do? (ping, kill, ip_spoof, arp_spoof, exit): ")
+        command = input("What would you like to do? (ping, kill, ddos, ip_spoof, arp_spoof, exit): ")
         if node.running is False:
            print("Node has stopped running")
            exit()
@@ -103,7 +103,14 @@ if __name__ == '__main__':
               fake_ip = node.default_gateway if fake_source == "router" else node_configurations[fake_source].ip_address
 
               node.arp_spoof(dest_node.ip_address, fake_ip)
-
+        elif command == "ddos":
+             if not isinstance(node, MaliciousNode):
+               print("You are a benign node, unable to conduct a DDOS attack!")
+             else:
+               dest = input("Destination node: ")
+               dest_node = node_configurations[dest]
+   
+               node.ddos_attack(dest_node.ip_address)
         elif command == "exit":
            record_node_running(node_type, False)
            node.stop_receiving()
