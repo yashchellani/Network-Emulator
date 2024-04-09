@@ -104,7 +104,7 @@ class Node:
                     continue
 
                 if dest_mac == self.mac_address:
-                    print(f"\nYAYYYY Node {self.mac_address} - Received data: {ethernet_payload} from {src_mac}")
+                    print(f"\nNode {self.mac_address} - Received data: {ethernet_payload} from {src_mac}")
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 elif dest_mac == "FF":
                     print(f"\nReceived broadcast from {src_mac}")
