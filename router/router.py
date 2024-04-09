@@ -1,6 +1,7 @@
 import socket
 import threading
 from time import sleep
+from cachetools import TTLCache
 
 network_definitions = {
    '\x10/4': 8122,
@@ -16,11 +17,7 @@ class Router:
     self.interfaces = interface_configs
     self.data_link_sockets = {} # key: interface MAC, value: associated socket
     self.receiving_threads = {} # key: interface MAC, value: receiving thread
-    self.arp_table = {
-      # "\x1A": "N1",
-      # "\x2A": "N2",
-      # "\x2B": "N3"
-    } # TODO: un-hardcode
+    self.arp_table = TTLCache(maxsize=100, ttl=60)
     self.arp_table_lock = threading.Lock()
     self.running = True
   
