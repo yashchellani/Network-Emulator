@@ -12,9 +12,10 @@ def load_firewall_rules(filepath="config/rules.json"):
 
 def record_node_running(node_type, running):
    "Helper method to ensure that one node type can only be run once"
-   existing_nodes = ""
    with open("active_nodes.txt", "r+") as file:
+      existing_nodes = file.read()
       if running:
+         print("existing nodes: ", existing_nodes)
          if node_type in existing_nodes:
             raise RuntimeError("Node is already running")
          existing_nodes += node_type + "\n"
@@ -23,9 +24,6 @@ def record_node_running(node_type, running):
       file.seek(0)
       file.write(existing_nodes) 
       file.truncate()
-def clean_running_nodes_file():
-   with open("active_nodes.txt", "w") as file:
-      file.write("")
 
 
 firewall_rules = load_firewall_rules()
@@ -40,7 +38,6 @@ node_configurations = {
 }
 
 if __name__ == '__main__':
-    clean_running_nodes_file()
     while True:
       node_type = input("Which type of node do you want to create? (node1, node2, node3, node4) :")
       if node_type not in node_configurations.keys():

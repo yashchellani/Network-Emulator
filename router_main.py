@@ -9,8 +9,13 @@ from router import Router
 from router.data_link import ListenConnections
 
 from time import sleep
+
+def clean_running_nodes_file():
+   with open("active_nodes.txt", "w") as file:
+      file.write("")
     
 if __name__ == '__main__':
+  clean_running_nodes_file()
   # Open socket
   data_link = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   data_link.bind(("localhost", 8122))
