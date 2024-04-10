@@ -17,6 +17,7 @@ class Node:
 
         # TODO: Come up with a better way of calculating the default gateway (input it when initializing the node?)
         # Cause yes we can derive it from the IP address but right now we're assuming subnet mask is always 4 bits in front
+
         _mask = int('11110000', 2)
         default_gateway = (ord(ip_address) & _mask) + 1
         # print("Default Gateway: ", bin(default_gateway))
@@ -112,7 +113,7 @@ class Node:
                     print(f"\nReceived broadcast from {src_mac}")
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 else:
-                    if hasattr(self, 'sniff_traffic'):
+                    if hasattr(self, 'sniff_traffic') and self.ip_address not in [src_mac, dest_mac]:
                         print(f"Sniffing from {src_mac} to {dest_mac}")
                         if self.sniffing_enabled:
                             self.sniff_traffic(data)
