@@ -16,7 +16,6 @@ def record_node_running(node_type, running):
    with open("active_nodes.txt", "r+") as file:
       existing_nodes = file.read()
       if running:
-         print("existing nodes: ", existing_nodes)
          if node_type in existing_nodes:
             raise RuntimeError("Node is already running")
          existing_nodes += node_type + "\n"

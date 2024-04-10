@@ -100,7 +100,7 @@ class Node:
                     self.ids.analyze_packet(data)
 
                 src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-                # print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
+                print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
 
                 if self.firewall and self.firewall.is_mac_blocked(src_mac):
                     print(f"\nIP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
@@ -113,7 +113,7 @@ class Node:
                     print(f"\nReceived broadcast from {src_mac}")
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 else:
-                    if hasattr(self, 'sniff_traffic') and self.ip_address not in [src_mac, dest_mac]:
+                    if hasattr(self, 'sniff_traffic') and self.mac_address != src_mac:
                         print(f"Sniffing from {src_mac} to {dest_mac}")
                         if self.sniffing_enabled:
                             self.sniff_traffic(data)
