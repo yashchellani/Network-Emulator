@@ -42,21 +42,21 @@ class MaliciousNode(Node):
                 if timeout_counter > timeout_limit:
                     print("Timeout while waiting for ARP resolution...")
                     return
-                print("Waiting for ARP response...")
                 sleep(1) # life would be better with asyncio
                 timeout_counter += 1
 
         dest_mac = self.arp_table[dest_ip]
 
-        arp_response = f"{dest_mac} {dest_ip} {self.mac_address} {fake_ip} {1} ARP_RESPONSE"
+        arp_response = f"{dest_mac} {dest_ip} {self.mac_address} {fake_ip} {1} GRATUITOUS_ARP"
         self.send_ethernet_frame(arp_response, dest_mac, 1)
 
     def disable_sniffing(self):
         self.sniffing_enabled = False
 
     def sniff_traffic(self, packet):
-        if self.ip_address not in packet:
-            print(f"Sniffy sniffy: {packet}")
+        src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(packet)
+        print(f"Sniffing from {src_mac} to {dest_mac}: {ethernet_payload}")
+        
     
     def ddos_attack(self, dest_ip, src_ip):
         for _ in range(100):

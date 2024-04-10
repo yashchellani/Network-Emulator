@@ -57,7 +57,7 @@ if __name__ == '__main__':
     node.start_receiving()
   
     while(node.running):
-        command = input("What would you like to do? (ping, kill, ddos, ip_spoof, arp_spoof, exit): ")
+        command = input("What would you like to do? (ping, kill, ddos, ip_spoof, arp_spoof, update_firewall, exit): ")
         if node.running is False:
            print("Node has stopped running")
            exit()
@@ -111,17 +111,20 @@ if __name__ == '__main__':
                dest_node = node_configurations[dest]
                node.ddos_attack(dest_node.ip_address, src_ip=node.ip_address)
         elif command == "update_firewall":
-            print("Updating firewall rules...")
-            new_rule = input("Enter new rule (block/allow): ")
-            while new_rule not in ["block", "allow"]:
+            if not isinstance(node, FirewallNode):
+               print("You are not equipped with a firewall!")
+            else:
+               print("Updating firewall rules...")
                new_rule = input("Enter new rule (block/allow): ")
-            node_to_add = input("Enter the node: ")
-            while node_to_add not in node_configurations.keys():
+               while new_rule not in ["block", "allow"]:
+                  new_rule = input("Enter new rule (block/allow): ")
                node_to_add = input("Enter the node: ")
-            rule = {
-               "mac": node_configurations[node_to_add].mac_address,
-            }
-            firewall.add_rule(new_rule, rule)
+               while node_to_add not in node_configurations.keys():
+                  node_to_add = input("Enter the node: ")
+               rule = {
+                  "mac": node_configurations[node_to_add].mac_address,
+               }
+               firewall.add_rule(new_rule, rule)
         elif command == "exit":
            record_node_running(node_type, False)
            node.stop_receiving()
