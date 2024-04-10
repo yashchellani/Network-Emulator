@@ -1,4 +1,4 @@
-from nodes.node_types import BasicNode, MaliciousNode, FirewallNode
+from nodes.node_types import BasicNode, MaliciousNode, FirewallNode, SecureNode
 import json
 import socket
 from security.firewall import Firewall
@@ -34,7 +34,9 @@ node_configurations = {
     "node1": BasicNode(ip_address='\x1A', mac_address='N1'),
     "node2": MaliciousNode(ip_address='\x2A', mac_address='N2'),
     "node3": FirewallNode(ip_address='\x2B', mac_address='N3', firewall=firewall, ids=ids),
-    "node4": BasicNode(ip_address='\x2C', mac_address='N4')
+    "node4": BasicNode(ip_address='\x2C', mac_address='N4'),
+    "node5": SecureNode(ip_address='\x2D', mac_address='N5'),
+    "node6": SecureNode(ip_address='\x2E', mac_address='N6')
 }
 
 if __name__ == '__main__':

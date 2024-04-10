@@ -1,7 +1,6 @@
 from .node import Node
-import socket
 from time import sleep
-
+import secrets
 class BasicNode(Node):
     """
     A basic network node type that can send and receive messages but has no special behaviors.
@@ -67,3 +66,12 @@ class MaliciousNode(Node):
 class FirewallNode(Node):
   def __init__(self, ip_address, mac_address, firewall, ids):
     super().__init__(ip_address, mac_address, firewall, ids)
+
+class SecureNode(Node):
+    """
+    A network node that establishes secure TLS connections for sending and receiving messages.
+    """
+    def __init__(self, ip_address, mac_address):
+        # Diffie-Hellman Parameters (Using simplified values for demonstration)
+        
+        super().__init__(ip_address, mac_address, dh_p=23, dh_g=5)

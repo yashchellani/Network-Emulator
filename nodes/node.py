@@ -2,9 +2,16 @@ import socket
 import threading
 from time import sleep
 from cachetools import TTLCache
+import ssl
+import hashlib
+import secrets
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
 
 class Node:
-    def __init__(self, ip_address, mac_address, firewall=None, ids=None):
+    def __init__(self, ip_address, mac_address, firewall=None, ids=None, dh_p=None, dh_g=None):
         self.ip_address = ip_address
         self.mac_address = mac_address
         self.data_link_address = ('localhost', 8122) if mac_address == 'N1' else ('localhost', 8123)
@@ -13,6 +20,13 @@ class Node:
         self.receiving_thread = None
         self.firewall = firewall
         self.ids = ids
+        self.dh_p = dh_p  # Prime number
+        self.dh_g = dh_g   # Primitive root modulo p
+        self.dh_private_key = secrets.randbelow(self.dh_p) if self.dh_p else None
+        self.dh_public_key = pow(self.dh_g, self.dh_private_key, self.dh_p) if self.dh_p else None
+        self.shared_secret = None
+        self.key_exchange_complete = threading.Event()
+
         # self.ids_lock = threading.Lock()
 
         # TODO: Come up with a better way of calculating the default gateway (input it when initializing the node?)
@@ -31,6 +45,7 @@ class Node:
         """Establishes a connection to the data link server."""
         self.data_link_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.data_link_socket.connect(self.data_link_address)
+        self.start_key_exchange()
         print(f"\n{self.mac_address} connected to data link")
 
     def send_ip_packet(self, data, dest_ip, protocol, src_ip=None):
@@ -72,6 +87,9 @@ class Node:
         """
         Emulates sending data over Ethernet to a specific destination.
         """
+        if self.shared_secret:
+            key = self.derive_key(self.shared_secret, "LOVEUPROF")
+            data = self.encrypt_message(data, key)
         ethernet_frame = self._construct_ethernet_frame(dest_mac, ethertype, data)
         try:
             self.data_link_socket.send(ethernet_frame)
@@ -97,11 +115,20 @@ class Node:
                     self.ids.analyze_packet(data)
 
                 src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-
+                if "KEY_EXCHANGE" in ethernet_payload:
+                    _, remote_public_key = ethernet_payload.split()
+                    self.calculate_shared_secret(int(remote_public_key))
+                    print("Key exchange completed. Shared secret established.")
+                    continue
+                
                 if self.firewall and self.firewall.is_mac_blocked(src_mac):
                     print(f"\n[FIREWALL]: IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
                     continue
-
+                
+                if self.shared_secret:
+                    key = self.derive_key(self.shared_secret, "LOVEUPROF")
+                    data = self.decrypt_message(data, key)
+                    
                 if dest_mac == self.mac_address:
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 elif dest_mac == "FF":
@@ -208,3 +235,50 @@ class Node:
             return True
         else:
             return False     
+
+    def start_key_exchange(self):
+        """
+        Initiates the key exchange by sending the public key to the connected node.
+        """
+        for _, node_ip in self.connected_nodes.items():
+            self.send_ip_packet(f"KEY_EXCHANGE {self.dh_public_key}", node_ip, 2)  # Using protocol number 2 for key exchange
+        if not self.key_exchange_complete.wait(timeout=10):
+            print("Key exchange timed out.")
+
+    def calculate_shared_secret(self, remote_public_key):
+        """
+        Calculates the shared secret using the remote public key.
+        """
+        self.shared_secret = pow(remote_public_key, self.dh_private_key, self.dh_p)
+        self.key_exchange_complete.set()
+    
+    def derive_key(shared_secret, salt):
+        """Derives a key from the shared secret using SHA-256."""
+        key = hashlib.sha256((str(shared_secret) + salt).encode()).digest()
+        return key
+    
+    def encrypt_message(message, key):
+        """Encrypts a message using AES CBC mode."""
+        padder = padding.PKCS7(algorithms.AES.block_size).padder()
+        padded_data = padder.update(message.encode()) + padder.finalize()
+        
+        iv = os.urandom(16)  # Initialization vector
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ct = encryptor.update(padded_data) + encryptor.finalize()
+        
+        return iv + ct  # Prepend IV for use in decryption
+
+    def decrypt_message(encrypted_message, key):
+        """Decrypts a message using AES CBC mode."""
+        iv = encrypted_message[:16]  # Extract the IV from the beginning
+        ct = encrypted_message[16:]  # Extract the cipher text
+        
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        padded_data = decryptor.update(ct) + decryptor.finalize()
+        
+        unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+        plaintext = unpadder.update(padded_data) + unpadder.finalize()
+        
+        return plaintext.decode()
