@@ -38,4 +38,5 @@ if __name__ == '__main__':
   
   router.connect_to_data_link()
   router.start_receiving()
+  router.process_buffer()
       

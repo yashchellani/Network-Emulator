@@ -21,7 +21,9 @@ class Router:
     self.arp_table_lock = threading.Lock()
     self.running = True
     self.buffer = []
-    self.threshold = 100
+    self.threshold = 10
+    self.consumer = None
+    self.consumer_lock = threading.Lock()
   
   def connect_to_data_link(self):
     """Establishes a connection to the data link server."""
@@ -48,19 +50,53 @@ class Router:
 
             src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
             print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {interface['mac']}")
-
-            if dest_mac == interface['mac']:
-                print(f"\nRouter Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
-                self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
-            elif dest_mac == "FF":
-                print(f"\nReceived broadcast from {src_mac}")
-                self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
-            else:
-                print(f"\nData not for me {interface['mac']}. Dropping data from {src_mac} to {dest_mac}.")
+            with self.consumer_lock:
+              print("BUFFER LENGTH:", len(self.buffer))
+              if len(self.buffer) < self.threshold:
+                self.buffer.append((data, interface))
+              else:
+                print("Buffer full, dropping packet")
+            # if dest_mac == interface['mac']:
+            #     print(f"\nRouter Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
+            #     self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+            # elif dest_mac == "FF":
+            #     print(f"\nReceived broadcast from {src_mac}")
+            #     self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+            # else:
+            #     print(f"\nData not for me {interface['mac']}. Dropping data from {src_mac} to {dest_mac}.")
       except Exception as e:
           print("Router exception: ", e)
           self.running = False
+          
+  def process_buffer(self):
+    """Process packets from the buffer."""
+    while self.running:
+      if len(self.buffer) != 0:
+        with self.consumer_lock:
+          packets, interface = self.buffer.pop(0)
+          print(f"\nProcessing packet from buffer: {packets}")
+          packet = packets.decode('utf-8')
+          packet = packet.split('<>')
+          if len(packet) > 1:
+            packet.pop()
+          for p in packet:
+            print(f"\nProcessing packet: {p}")
+            src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(p.encode('utf-8'))
+            if dest_mac == interface['mac']:
+              print(f"\nRouter Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
+              self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+            elif dest_mac == "FF":
+              print(f"\nReceived broadcast from {src_mac}")
+              self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+            else:
+              print(f"\nData not for me {interface['mac']}. Dropping data from {src_mac} to {dest_mac}.")
+            sleep(0.1)  # Adjust sleep time as needed for simulation
 
+  def start_buffer_processing(self):
+    """Start a thread to periodically process the buffer."""
+    self.consumer = threading.Thread(target=self.process_buffer)
+    self.consumer.start()
+    
   def _process_received_data(self, interface, data, src_mac, ethertype):
     """
     Process received data 
@@ -200,3 +236,5 @@ class Router:
       finally:
           self.data_link_sockets[mac].close()
           self.receiving_threads[mac].join()
+    if self.consumer:
+      self.consumer.join()

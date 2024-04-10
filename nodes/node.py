@@ -25,6 +25,8 @@ class Node:
 
         self.arp_table = TTLCache(maxsize=100, ttl=60)
         self.connected_nodes = {}
+        self.buffer = []
+        self.threshold = 20
 
 
     def connect_to_data_link(self):
@@ -140,7 +142,7 @@ class Node:
         Constructs an Ethernet frame with source and destination MAC addresses and data.
         """
         data_length = len(data)
-        ethernet_frame = f"{self.mac_address} {dest_mac} {data_length} {ethertype} {data}"
+        ethernet_frame = f"{self.mac_address} {dest_mac} {data_length} {ethertype} {data}<>"
         return ethernet_frame.encode('utf-8')
 
     def _parse_ethernet_frame(self, frame):
