@@ -45,16 +45,13 @@ class Router:
             data, addr = self.data_link_sockets[interface['mac']].recvfrom(1024)  # Buffer size of 1024 bytes
 
             src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-            print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {interface['mac']}")
 
             if dest_mac == interface['mac']:
-                print(f"\nRouter Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
+                print(f"[ROUTER] Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
                 self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
             elif dest_mac == "FF":
-                print(f"\nReceived broadcast from {src_mac}")
+                print(f"[ROUTER] Interface {interface['mac']} - Received MAC broadcast from {src_mac}")
                 self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
-            else:
-                print(f"\nData not for me {interface['mac']}. Dropping data from {src_mac} to {dest_mac}.")
       except Exception as e:
           print("Router exception: ", e)
           self.running = False
@@ -76,7 +73,7 @@ class Router:
       
     elif ethertype == 1: # ARP
       arp_packet = self._parse_arp_packet(data)
-  
+      print(f"[ARP] Received {arp_packet['message']} from (MAC: {arp_packet['sender_mac']} , IP: {arp_packet['sender_ip']})")
       if arp_packet['opcode'] == 0: # if it's an ARP_QUERY
         if arp_packet['target_ip'] == interface['ip']: # if they're querying for our MAC
            # Send an ARP reply to the querying one
@@ -92,7 +89,7 @@ class Router:
     """
     Routes an incoming IP packet to the correct interface based on the destination IP.
     """
-    print("\nRouting packet: ", ip_packet)
+    print("[ROUTER] Routing packet: ", ip_packet)
     # Determine the outgoing interface based on the destination IP
     outgoing_interface = self._find_outgoing_interface(ip_packet['dest_ip'])
     
@@ -137,7 +134,7 @@ class Router:
     Sends an Ethernet frame out of a specified interface.
     """
     self.data_link_sockets[interface['mac']].send(ethernet_frame)
-    print(f"Sending frame out of interface {interface['mac']}: {ethernet_frame}")
+    print(f"[ROUTER] Sending frame out of interface {interface['mac']}: {ethernet_frame}")
 
   @staticmethod
   def _parse_ethernet_frame(frame):

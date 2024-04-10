@@ -66,12 +66,8 @@ class ReceiveMessage(threading.Thread):
                 if not received_message:
                     break
 
-                print(f"Received from {self.address}: {received_message}")
-                # print(f"Connected devices: {connected_devices}")
-
                 received_message = received_message.decode("utf-8")
                 src_mac, dest_mac, data_length, ethertype, data = received_message.split(' ', 4)
-
 
                 # If broadcast address, send it back to the subnet group of the src mac
                 if dest_mac == "FF":
@@ -92,7 +88,7 @@ class ReceiveMessage(threading.Thread):
             receiver_port = node_definitions[dest_mac]
             if receiver_port in connected_devices:
                 for target_socket in connected_devices[receiver_port]: # Broadcast to all devices in the subnet
-                    print(f"\nBroadcasting to {target_socket.getpeername()}: {message}")
+                    print(f"[DATA LINK] Broadcasting to {target_socket.getpeername()}: {message}")
                     try:
                         target_socket.sendall(message.encode("utf-8"))
                     except Exception as e:

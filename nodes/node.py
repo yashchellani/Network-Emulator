@@ -36,8 +36,6 @@ class Node:
         """
         Emulates sending data over IP to a specific destination
         """
-        print("\nSending IP packet...")
-
         # If IP is part of our LAN, send to it directly, otherwise go through the default gateway
         arp_dest = dest_ip if self._ip_in_network(dest_ip) else self.default_gateway
 
@@ -54,7 +52,6 @@ class Node:
                 if timeout_counter > timeout_limit:
                     print("Timeout while waiting for ARP resolution...")
                     return
-                print("Waiting for ARP response...")
                 sleep(1) # life would be better with asyncio
                 timeout_counter += 1
 
@@ -77,9 +74,9 @@ class Node:
         ethernet_frame = self._construct_ethernet_frame(dest_mac, ethertype, data)
         try:
             self.data_link_socket.send(ethernet_frame)
-            print(f"\nSent data to {dest_mac}: {ethernet_frame}")
+            print(f"Sent Ethernet Frame to {dest_mac}: {ethernet_frame}")
         except ConnectionAbortedError as e:
-            print(f"Failed to send data, connection was aborted: {e}")
+            print(f"Failed to send Ethernet Frame, connection was aborted: {e}")
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
@@ -94,30 +91,25 @@ class Node:
             while self.running:
                 data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
                 if self.ids:
-                    print(f"\nAnalyzing packet: {data}")
+                    print(f"\n[IDS] Analyzing packet: {data}")
                     # with self.ids_lock:  # Acquire the lock
                     self.ids.analyze_packet(data)
 
                 src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-                print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
 
                 if self.firewall and self.firewall.is_mac_blocked(src_mac):
-                    print(f"\nIP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
+                    print(f"\n[FIREWALL]: IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
                     continue
 
                 if dest_mac == self.mac_address:
-                    print(f"\nNode {self.mac_address} - Received data: {ethernet_payload} from {src_mac}")
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 elif dest_mac == "FF":
-                    print(f"\nReceived broadcast from {src_mac}")
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 else:
                     if hasattr(self, 'sniff_traffic'):
                         print(f"Sniffing from {src_mac} to {dest_mac}")
                         if self.sniffing_enabled:
                             self.sniff_traffic(data)
-                    else:   
-                        print(f"\nData not for me {self.mac_address}. Dropping data from {src_mac} to {dest_mac}.")
         except Exception as e:
             self.running = False
 
@@ -161,7 +153,6 @@ class Node:
         """
         Placeholder method for processing received data. To be overridden in subclasses.
         """
-        print("\nProcessing received data...")
         if ethertype == 0: # IP
             # if yes, extract ip header (to get the protocol and source ip)
             src_ip, dst_ip, protocol, data_length, ip_payload = data.split(' ', 4)
@@ -169,15 +160,19 @@ class Node:
 
             if protocol == 0: # if protocol is ping
                 if ip_payload == "PING":
+                    print(f"[PING] Received PING from {src_ip}")
                     # respond to ping
+                    sleep(0.5)
                     t = threading.Thread(target=self.send_ip_packet, args=("PING_RESPONSE", src_ip, 0,), daemon=True)
                     t.start()
+                elif ip_payload == "PING_RESPONSE":
+                    print(f"[PING] Received PING_RESPONSE from {src_ip}")
             elif protocol == 1: # if protocol is kill
-                print("Ded X_X")
+                print(f"[KILL] Received packet: {data}")
                 self.stop_receiving()
         elif ethertype == 1: # ARP
             arp_packet = self._parse_arp_packet(data)
-
+            print(f"[ARP] Received {arp_packet['message']} from (MAC: {arp_packet['sender_mac']} , IP: {arp_packet['sender_ip']})")
             if arp_packet['opcode'] == 0: # if it's an ARP_QUERY
                 if arp_packet['target_ip'] == self.ip_address: # if they're querying for our MAC
                     # Send an ARP reply to the querying one
