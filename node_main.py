@@ -4,6 +4,7 @@ import socket
 from security.firewall import Firewall
 from security.ids import IDS
 from time import sleep
+import sys
 
 def load_firewall_rules(filepath="config/rules.json"):
   with open(filepath, 'r') as file:
@@ -39,7 +40,10 @@ node_configurations = {
 
 if __name__ == '__main__':
     while True:
-      node_type = input("Which type of node do you want to create? (node1, node2, node3, node4) :")
+      if len(sys.argv) > 1 and sys.argv[1] not in node_configurations.keys() or len(sys.argv) == 1:
+         node_type = input("Which type of node do you want to create? (node1, node2, node3, node4) :")
+      else: 
+         node_type = sys.argv[1]
       if node_type not in node_configurations.keys():
          print("Invalid node type")
       else:
