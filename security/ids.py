@@ -23,9 +23,9 @@ class IDS:
       'data': " ".join(parts[3:])
     }
   
-  def analyze_packet(self, packet):
+  def analyze_packet(self, frame):
     """Analyze packets for threat signatures and rate limits."""
-    packet = self.parse_ethernet_frame_to_packet(packet)
+    packet = self.parse_ethernet_frame_to_packet(frame)
     if packet is None:
       return False
         
