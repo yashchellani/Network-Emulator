@@ -1,7 +1,8 @@
 import socket
 import threading
 from time import sleep
-from multiprocessing import Process
+from cachetools import TTLCache
+
 class Node:
     def __init__(self, ip_address, mac_address, firewall=None, ids=None):
         self.ip_address = ip_address
@@ -21,8 +22,9 @@ class Node:
         # print("Default Gateway: ", bin(default_gateway))
         self.default_gateway = chr(default_gateway)
 
-        self.arp_table = {}
+        self.arp_table = TTLCache(maxsize=100, ttl=60)
         self.connected_nodes = {}
+
 
     def connect_to_data_link(self):
         """Establishes a connection to the data link server."""
