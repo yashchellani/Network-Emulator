@@ -16,7 +16,6 @@ def record_node_running(node_type, running):
    with open("active_nodes.txt", "r+") as file:
       existing_nodes = file.read()
       if running:
-         print("existing nodes: ", existing_nodes)
          if node_type in existing_nodes:
             raise RuntimeError("Node is already running")
          existing_nodes += node_type + "\n"
@@ -111,6 +110,18 @@ if __name__ == '__main__':
                dest = input("Destination node: ")
                dest_node = node_configurations[dest]
                node.ddos_attack(dest_node.ip_address, src_ip=node.ip_address)
+        elif command == "update_firewall":
+            print("Updating firewall rules...")
+            new_rule = input("Enter new rule (block/allow): ")
+            while new_rule not in ["block", "allow"]:
+               new_rule = input("Enter new rule (block/allow): ")
+            node_to_add = input("Enter the node: ")
+            while node_to_add not in node_configurations.keys():
+               node_to_add = input("Enter the node: ")
+            rule = {
+               "mac": node_configurations[node_to_add].mac_address,
+            }
+            firewall.add_rule(new_rule, rule)
         elif command == "exit":
            record_node_running(node_type, False)
            node.stop_receiving()

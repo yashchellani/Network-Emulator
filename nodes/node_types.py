@@ -54,7 +54,8 @@ class MaliciousNode(Node):
         self.sniffing_enabled = False
 
     def sniff_traffic(self, packet):
-        print(f"Sniffy sniffy: {packet}")
+        if self.ip_address not in packet:
+            print(f"Sniffy sniffy: {packet}")
     
     def ddos_attack(self, dest_ip, src_ip):
         for _ in range(100):

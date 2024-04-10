@@ -20,6 +20,8 @@ class Router:
     self.arp_table = TTLCache(maxsize=100, ttl=60)
     self.arp_table_lock = threading.Lock()
     self.running = True
+    self.buffer = []
+    self.threshold = 100
   
   def connect_to_data_link(self):
     """Establishes a connection to the data link server."""
