@@ -108,7 +108,6 @@ class Node:
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 else:
                     if hasattr(self, 'sniff_traffic') and self.mac_address != src_mac:
-                        print(f"Sniffing from {src_mac} to {dest_mac}")
                         if self.sniffing_enabled:
                             self.sniff_traffic(data)
         except Exception as e:
@@ -161,19 +160,19 @@ class Node:
 
             if protocol == 0: # if protocol is ping
                 if ip_payload == "PING":
-                    print(f"[PING] Received PING from {src_ip}")
+                    print(f"[PING] Received PING from {hex(ord(src_ip))}")
                     # respond to ping
                     sleep(0.5)
                     t = threading.Thread(target=self.send_ip_packet, args=("PING_RESPONSE", src_ip, 0,), daemon=True)
                     t.start()
                 elif ip_payload == "PING_RESPONSE":
-                    print(f"[PING] Received PING_RESPONSE from {src_ip}")
+                    print(f"[PING] Received PING_RESPONSE from {hex(ord(src_ip))}")
             elif protocol == 1: # if protocol is kill
-                print(f"[KILL] Received packet: {data}")
+                print(f"[KILL] Murdered by {hex(ord(src_ip))}")
                 self.stop_receiving()
         elif ethertype == 1: # ARP
             arp_packet = self._parse_arp_packet(data)
-            print(f"[ARP] Received {arp_packet['message']} from (MAC: {arp_packet['sender_mac']} , IP: {arp_packet['sender_ip']})")
+            print(f"[ARP] Received {arp_packet['message']} from (MAC: {arp_packet['sender_mac']} , IP: {hex(ord(arp_packet['sender_ip']))})")
             if arp_packet['opcode'] == 0: # if it's an ARP_QUERY
                 if arp_packet['target_ip'] == self.ip_address: # if they're querying for our MAC
                     # Send an ARP reply to the querying one
