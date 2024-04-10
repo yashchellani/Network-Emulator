@@ -100,7 +100,7 @@ class Node:
                     self.ids.analyze_packet(data)
 
                 src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-                print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
+                # print(f"\nReceived data: {ethernet_payload} for {dest_mac} and I am {self.mac_address}")
 
                 if self.firewall and self.firewall.is_mac_blocked(src_mac):
                     print(f"\nIP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
