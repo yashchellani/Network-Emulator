@@ -97,12 +97,13 @@ class Node:
                 buffer = buffer[0:min(len(buffer), 10)]
             
                 for data in buffer:
+                    data = data.encode('utf-8')
                     if self.ids:
                         print(f"\n[IDS] Analyzing packet: {data}")
                         # with self.ids_lock:  # Acquire the lock
-                        self.ids.analyze_packet(data.encode('utf-8'))
+                        self.ids.analyze_packet(data)
 
-                    src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data.encode('utf-8'))
+                    src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
 
                     if self.firewall and self.firewall.is_mac_blocked(src_mac):
                         print(f"\n[FIREWALL]: IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
