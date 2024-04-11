@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import os
+import base64
 
 class Node:
     def __init__(self, ip_address, mac_address, firewall=None, ids=None, dh_p=None, dh_g=None):
@@ -23,7 +24,7 @@ class Node:
         self.dh_p = dh_p  # Prime number
         self.dh_g = dh_g   # Primitive root modulo p
         self.dh_private_key = secrets.randbelow(self.dh_p) if self.dh_p else None
-        self.dh_public_key = pow(self.dh_g, self.dh_private_key, self.dh_p) if self.dh_p else None
+        self.dh_public_key = pow(self.dh_g, self.dh_private_key, self.dh_p) + 1 if self.dh_p else None
         self.shared_secret = None
         self.key_exchange_complete = threading.Event()
 
@@ -45,13 +46,13 @@ class Node:
         """Establishes a connection to the data link server."""
         self.data_link_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.data_link_socket.connect(self.data_link_address)
-        self.start_key_exchange()
         print(f"\n{self.mac_address} connected to data link")
 
     def send_ip_packet(self, data, dest_ip, protocol, src_ip=None):
         """
         Emulates sending data over IP to a specific destination
         """
+
         # If IP is part of our LAN, send to it directly, otherwise go through the default gateway
         arp_dest = dest_ip if self._ip_in_network(dest_ip) else self.default_gateway
 
@@ -70,7 +71,10 @@ class Node:
                     return
                 sleep(1) # life would be better with asyncio
                 timeout_counter += 1
-
+        
+        if self.dh_p:
+            self.start_key_exchange()
+            self.shared_secret = 13
         # Find the MAC address
         dest_mac = self.arp_table[arp_dest]
         
@@ -88,8 +92,10 @@ class Node:
         Emulates sending data over Ethernet to a specific destination.
         """
         if self.shared_secret:
-            key = self.derive_key(self.shared_secret, "LOVEUPROF")
-            data = self.encrypt_message(data, key)
+            key = self.derive_key("LOVEUPROF")
+            combined_bytes = self.encrypt_message(data, key)
+            data = base64.b64encode(combined_bytes).decode('utf-8')  # Encode to Base64 and then to a string
+
         ethernet_frame = self._construct_ethernet_frame(dest_mac, ethertype, data)
         try:
             self.data_link_socket.send(ethernet_frame)
@@ -115,20 +121,33 @@ class Node:
                     self.ids.analyze_packet(data)
 
                 src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-                if "KEY_EXCHANGE" in ethernet_payload:
+                print("Received Ethernet Frame: ", ethernet_payload)
+                if "KEY_EXCHANGE" in ethernet_payload and src_mac != self.mac_address and not self.shared_secret:
+                    print(f"Received key exchange request from {src_mac}")
                     _, remote_public_key = ethernet_payload.split()
+                    print(f"Received public key from {src_mac}: {remote_public_key}")
                     self.calculate_shared_secret(int(remote_public_key))
-                    print("Key exchange completed. Shared secret established.")
+                    print(f"Shared secret: {self.shared_secret}")
+                    self.key_exchange_complete.set()  # Signal that key exchange is complete
                     continue
                 
                 if self.firewall and self.firewall.is_mac_blocked(src_mac):
                     print(f"\n[FIREWALL]: IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
                     continue
                 
+                
                 if self.shared_secret:
-                    key = self.derive_key(self.shared_secret, "LOVEUPROF")
-                    data = self.decrypt_message(data, key)
-                    
+                    key = self.derive_key("LOVEUPROF")
+                    print("Key - ", key)
+                    print("Decrypting DATA - ", ethernet_payload)
+
+                    # decrypted_message = self.decrypt_message('hi', 'hi')
+                    ethernet_payload = base64.b64decode(ethernet_payload.encode('utf-8'))  # Decode back to bytes
+
+                    decrypted_message = self.decrypt_message(ethernet_payload, key)
+                    print("Decrypted Message - ", decrypted_message)
+                    ethernet_payload = decrypted_message.encode('utf-8')
+                    print("Decrypted DATA - ", ethernet_payload)
                 if dest_mac == self.mac_address:
                     self._process_received_data(ethernet_payload, src_mac, ethertype)
                 elif dest_mac == "FF":
@@ -240,24 +259,23 @@ class Node:
         """
         Initiates the key exchange by sending the public key to the connected node.
         """
-        for _, node_ip in self.connected_nodes.items():
-            self.send_ip_packet(f"KEY_EXCHANGE {self.dh_public_key}", node_ip, 2)  # Using protocol number 2 for key exchange
-        if not self.key_exchange_complete.wait(timeout=10):
-            print("Key exchange timed out.")
+        key_exchange_message = f"KEY_EXCHANGE {self.dh_public_key}"
+        self.send_ethernet_frame(key_exchange_message, "FF", 0)
 
     def calculate_shared_secret(self, remote_public_key):
         """
         Calculates the shared secret using the remote public key.
         """
-        self.shared_secret = pow(remote_public_key, self.dh_private_key, self.dh_p)
+        # self.shared_secret = pow(remote_public_key, self.dh_private_key, self.dh_p)
+        self.shared_secret = 13
         self.key_exchange_complete.set()
     
-    def derive_key(shared_secret, salt):
+    def derive_key(self, salt):
         """Derives a key from the shared secret using SHA-256."""
-        key = hashlib.sha256((str(shared_secret) + salt).encode()).digest()
+        key = hashlib.sha256((str(self.shared_secret) + salt).encode()).digest()
         return key
     
-    def encrypt_message(message, key):
+    def encrypt_message(self, message, key):
         """Encrypts a message using AES CBC mode."""
         padder = padding.PKCS7(algorithms.AES.block_size).padder()
         padded_data = padder.update(message.encode()) + padder.finalize()
@@ -269,16 +287,27 @@ class Node:
         
         return iv + ct  # Prepend IV for use in decryption
 
-    def decrypt_message(encrypted_message, key):
+    def decrypt_message(self, encrypted_message, key):
         """Decrypts a message using AES CBC mode."""
-        iv = encrypted_message[:16]  # Extract the IV from the beginning
-        ct = encrypted_message[16:]  # Extract the cipher text
-        
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-        decryptor = cipher.decryptor()
-        padded_data = decryptor.update(ct) + decryptor.finalize()
-        
-        unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
-        plaintext = unpadder.update(padded_data) + unpadder.finalize()
-        
-        return plaintext.decode()
+        try:
+            print("WHY AM I NOT CALLED?")
+            print("Encrypted Message - ", encrypted_message)
+            print("Key - ", key)
+            iv = encrypted_message[:16]  # Extract the IV from the beginning
+            ct = encrypted_message[16:]  # Extract the cipher text
+            print(f"Type of IV: {type(iv)}")
+            print("IV - ", iv)
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+            print("CT - ", ct)
+            decryptor = cipher.decryptor()
+            print("Decryptor - ", decryptor)
+            padded_data = decryptor.update(ct) + decryptor.finalize()
+            print("Padded Data - ", padded_data)
+            unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+            print("Unpadder - ", unpadder)
+            plaintext = unpadder.update(padded_data) + unpadder.finalize()
+            print("Plaintext - ", plaintext)            
+            return plaintext.decode()
+        except Exception as e:
+            print(f"Failed to decrypt message: {e}")
+            return None
