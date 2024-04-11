@@ -79,6 +79,7 @@ if __name__ == '__main__':
            node.send_ip_packet("KILL", dest_node.ip_address, protocol=1)
 
            sleep(10)
+           record_node_running(dest, False)
 
         elif command == "ip_spoof":
            if not isinstance(node, MaliciousNode):
@@ -103,6 +104,8 @@ if __name__ == '__main__':
               fake_ip = node.default_gateway if fake_source == "router" else node_configurations[fake_source].ip_address
 
               node.arp_spoof(dest_node.ip_address, fake_ip)
+
+              sleep(5)
         elif command == "ddos":
              if not isinstance(node, MaliciousNode):
                print("You are a benign node, unable to conduct a DDOS attack!")
