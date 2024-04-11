@@ -2,6 +2,7 @@ import socket
 import threading
 from time import sleep
 from cachetools import TTLCache
+from queue import Queue
 
 network_definitions = {
    '\x10/4': 8122,
@@ -17,11 +18,12 @@ class Router:
     self.interfaces = interface_configs
     self.data_link_sockets = {} # key: interface MAC, value: associated socket
     self.receiving_threads = {} # key: interface MAC, value: receiving thread
+    self.consumer_threads = {} # key: interface MAC, value: receiving thread
     self.arp_table = TTLCache(maxsize=100, ttl=60)
     self.arp_table_lock = threading.Lock()
     self.running = True
-    self.buffer = []
-    self.threshold = 100
+    self.buffers = {}
+    self.threshold = 10
   
   def connect_to_data_link(self):
     """Establishes a connection to the data link server."""
@@ -37,26 +39,44 @@ class Router:
   def start_receiving(self):
         """Start a new thread to listen for incoming messages."""
         for interface in self.interfaces: 
+          self.buffers[interface['mac']] = Queue(maxsize=self.threshold)
           self.receiving_threads[interface['mac']] = threading.Thread(target=self.receive_data, args=(interface,))
+          self.consumer_threads[interface['mac']] = threading.Thread(target=self.consumer, args=(interface,))
           self.receiving_threads[interface['mac']].start()
+          self.consumer_threads[interface['mac']].start()
 
   def receive_data(self, interface):
       """Continuously listen for incoming data and print it."""
       try:
           while self.running:
-            data, addr = self.data_link_sockets[interface['mac']].recvfrom(1024)  # Buffer size of 1024 bytes
+            buf_data, addr = self.data_link_sockets[interface['mac']].recvfrom(1024)  # Buffer size of 1024 bytes
 
-            src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
-
-            if dest_mac == interface['mac']:
-                print(f"[ROUTER] Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
-                self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
-            elif dest_mac == "FF":
-                print(f"[ROUTER] Interface {interface['mac']} - Received MAC broadcast from {src_mac}")
-                self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+            buf = [x for x in buf_data.decode('utf-8').split(';') if x != '']
+            
+            for data in buf:
+              src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data.encode('utf-8'))
+              if not self.buffers[interface['mac']].full():
+                self.buffers[interface['mac']].put_nowait(data.encode('utf-8'))
+              else:
+                 print("Packet dropped")
       except Exception as e:
           print("Router exception: ", e)
           self.running = False
+
+  def consumer(self, interface):
+    while self.running:
+      data = self.buffers[interface['mac']].get()
+
+      src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
+      if dest_mac == interface['mac']:
+        print(f"[ROUTER] Interface {interface['mac']} - Received data: {ethernet_payload} from {src_mac}")
+        self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+      elif dest_mac == "FF":
+        print(f"[ROUTER] Interface {interface['mac']} - Received MAC broadcast from {src_mac}")
+        self._process_received_data(interface, ethernet_payload, src_mac, ethertype)
+      
+      sleep(1)
+     
 
   def _process_received_data(self, interface, data, src_mac, ethertype):
     """
@@ -168,7 +188,7 @@ class Router:
     Constructs an Ethernet frame with source and destination MAC addresses and data.
     """
     data_length = len(data)
-    ethernet_frame = f"{src_mac} {dest_mac} {data_length} {ethertype} {data}"
+    ethernet_frame = f";{src_mac} {dest_mac} {data_length} {ethertype} {data}"
     return ethernet_frame.encode('utf-8')   
 
   @staticmethod
@@ -197,3 +217,4 @@ class Router:
       finally:
           self.data_link_sockets[mac].close()
           self.receiving_threads[mac].join()
+          self.consumer_threads[mac].join()

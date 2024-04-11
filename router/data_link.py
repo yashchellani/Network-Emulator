@@ -68,6 +68,7 @@ class ReceiveMessage(threading.Thread):
 
                 received_message = received_message.decode("utf-8")
                 src_mac, dest_mac, data_length, ethertype, data = received_message.split(' ', 4)
+                src_mac = src_mac.replace(';', '')
 
                 # If broadcast address, send it back to the subnet group of the src mac
                 if dest_mac == "FF":
