@@ -9,11 +9,11 @@ class IDS:
     self.packet_time = defaultdict(float)  # Stores the start time of packet count interval per src_mac
   
   def parse_ethernet_frame_to_packet(self, ethernet_frame):
-    print("\nThis is IDS parsing ethernet frame to packet")
-    print(f"Ethernet frame: {ethernet_frame}")
+    # print("\nThis is IDS parsing ethernet frame to packet")
+    # print(f"Ethernet frame: {ethernet_frame}")
     ethernet_frame = ethernet_frame.decode('utf-8')
     parts = ethernet_frame.split(' ')
-    print(f"Parts: {parts}")
+    # print(f"Parts: {parts}")
     if len(parts) < 4:
       return None
     return {
@@ -29,7 +29,7 @@ class IDS:
     if packet is None:
       return False
         
-    print(f"Analyzing packet: {packet['data']}")
+    #print(f"Analyzing packet: {packet['data']}")
     current_time = time.time()
     
     # Check for packet rate limit
