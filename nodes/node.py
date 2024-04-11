@@ -90,26 +90,33 @@ class Node:
         """Continuously listen for incoming data and print it."""
         try:
             while self.running:
-                data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
-                if self.ids:
-                    print(f"\n[IDS] Analyzing packet: {data}")
-                    # with self.ids_lock:  # Acquire the lock
-                    self.ids.analyze_packet(data)
+                buf_data, addr = self.data_link_socket.recvfrom(1024)  # Buffer size of 1024 bytes
+                
+                buf = buf_data.decode('utf-8')
+                buffer = [x for x in buf.split(';') if x != '']
+                buffer = buffer[0:min(len(buffer), 10)]
+            
+                for data in buffer:
+                    data = data.encode('utf-8')
+                    if self.ids:
+                        print(f"\n[IDS] Analyzing packet: {data}")
+                        # with self.ids_lock:  # Acquire the lock
+                        self.ids.analyze_packet(data)
 
-                src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
+                    src_mac, dest_mac, data_length, ethertype, ethernet_payload = self._parse_ethernet_frame(data)
 
-                if self.firewall and self.firewall.is_mac_blocked(src_mac):
-                    print(f"\n[FIREWALL]: IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
-                    continue
+                    if self.firewall and self.firewall.is_mac_blocked(src_mac):
+                        print(f"\n[FIREWALL]: IP address {addr[0]} is blocked. Dropping data from {src_mac} to {dest_mac}")
+                        continue
 
-                if dest_mac == self.mac_address:
-                    self._process_received_data(ethernet_payload, src_mac, ethertype)
-                elif dest_mac == "FF":
-                    self._process_received_data(ethernet_payload, src_mac, ethertype)
-                else:
-                    if hasattr(self, 'sniff_traffic') and self.mac_address != src_mac:
-                        if self.sniffing_enabled:
-                            self.sniff_traffic(data)
+                    if dest_mac == self.mac_address:
+                        self._process_received_data(ethernet_payload, src_mac, ethertype)
+                    elif dest_mac == "FF":
+                        self._process_received_data(ethernet_payload, src_mac, ethertype)
+                    else:
+                        if hasattr(self, 'sniff_traffic') and self.mac_address != src_mac:
+                            if self.sniffing_enabled:
+                                self.sniff_traffic(data)
         except Exception as e:
             self.running = False
 
@@ -131,7 +138,7 @@ class Node:
         Constructs an Ethernet frame with source and destination MAC addresses and data.
         """
         data_length = len(data)
-        ethernet_frame = f"{self.mac_address} {dest_mac} {data_length} {ethertype} {data}"
+        ethernet_frame = f";{self.mac_address} {dest_mac} {data_length} {ethertype} {data}"
         return ethernet_frame.encode('utf-8')
 
     def _parse_ethernet_frame(self, frame):
@@ -167,6 +174,8 @@ class Node:
                     t.start()
                 elif ip_payload == "PING_RESPONSE":
                     print(f"[PING] Received PING_RESPONSE from {hex(ord(src_ip))}")
+                elif ip_payload == "DDOS":
+                    print(f"[DDOS]")
             elif protocol == 1: # if protocol is kill
                 print(f"[KILL] Murdered by {hex(ord(src_ip))}")
                 self.stop_receiving()
